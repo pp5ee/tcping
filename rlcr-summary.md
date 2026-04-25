@@ -103,4 +103,6 @@ This analysis provides a solid foundation for the Rust rewrite while preserving 
 ## BitLesson Delta
 
 Action: add
+Lesson ID(s): BL-20260425-bitlesson-delta-format
+Notes: Added first BitLesson entry documenting the validation issue and solution
 
