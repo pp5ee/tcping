@@ -2,7 +2,6 @@ use crate::tcping::{ProbeResult, Statistics};
 use crate::config::OutputConfig;
 use colored::*;
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
 
 /// Output formatter trait for different output formats
 pub trait OutputFormatter {

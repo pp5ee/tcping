@@ -28,6 +28,7 @@ net2 = "0.2"
 
 # Terminal output and formatting
 colored = "2.0"
+chrono = "0.4"
 
 # JSON serialization for output
 serde = { version = "1.0", features = ["derive"] }

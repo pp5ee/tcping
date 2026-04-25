@@ -20,7 +20,7 @@ pub struct TcpPingBuilder {
 
 impl TcpPingBuilder {
     /// Create a new builder with default configuration
-    pub fn new(host: String, port: u16) -> Self {
+    pub fn new(_host: String, port: u16) -> Self {
         use std::net::{IpAddr, SocketAddr};
 
         let target = SocketAddr::new(IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), port);

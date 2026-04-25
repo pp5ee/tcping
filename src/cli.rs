@@ -80,9 +80,6 @@ pub struct Cli {
     #[arg(short = 'u', long)]
     pub check_updates: bool,
 
-    /// Display help information
-    #[arg(short = 'h', long)]
-    pub help: bool,
 }
 
 impl Cli {

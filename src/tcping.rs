@@ -1,6 +1,6 @@
 use crate::config::{Config, ProtocolFamily};
-use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
-use std::time::{Duration, Instant};
+use std::net::{SocketAddr, ToSocketAddrs};
+use std::time::Instant;
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 
@@ -107,13 +107,6 @@ impl TcpPing {
         // Initialize statistics
         self.stats.start_time = Some(Instant::now());
 
-        // Set up signal handling for graceful shutdown
-        let ctrl_c = async {
-            tokio::signal::ctrl_c()
-                .await
-                .expect("Failed to install Ctrl+C handler");
-        };
-
         // Main ping loop
         let mut probe_count = 0;
 
@@ -139,7 +132,7 @@ impl TcpPing {
             // Wait for the next interval or Ctrl+C
             tokio::select! {
                 _ = tokio::time::sleep(self.config.interval) => {},
-                _ = ctrl_c => {
+                _ = tokio::signal::ctrl_c() => {
                     println!("\nReceived interrupt signal, stopping...");
                     break;
                 }
