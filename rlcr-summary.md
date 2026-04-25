@@ -102,5 +102,4 @@ This analysis provides a solid foundation for the Rust rewrite while preserving 
 
 ## BitLesson Delta
 
-Action: none
-Description: No BitLesson entries added or updated during this implementation.
+- none
