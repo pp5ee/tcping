@@ -15,3 +15,7 @@ dist/
 *.tar.gz.sha256
 .humanize*
 debian/
+build.rs
+VALIDATION_REPORT.md
+rlcr-summary.md
+round-1-summary.md

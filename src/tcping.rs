@@ -279,16 +279,16 @@ impl TcpPing {
     }
 
     /// Output a single probe result
-    async fn output_result(&self, _result: &ProbeResult) -> Result<(), String> {
-        // TODO: Implement output formatting based on configuration
-        // This will be implemented in the output module
+    async fn output_result(&self, result: &ProbeResult) -> Result<(), String> {
+        let output_manager = crate::output::OutputManager::new(&self.config.output);
+        output_manager.output_probe(result);
         Ok(())
     }
 
     /// Output final statistics
     async fn output_final_stats(&self) -> Result<(), String> {
-        // TODO: Implement final statistics output
-        // This will be implemented in the output module
+        let output_manager = crate::output::OutputManager::new(&self.config.output);
+        output_manager.output_stats(&self.stats);
         Ok(())
     }
 
