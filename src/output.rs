@@ -30,11 +30,12 @@ pub struct OutputManager {
 
 impl OutputManager {
     pub fn new(config: &OutputConfig) -> Self {
-        let format = match config.format.as_str() {
-            "json" => OutputFormat::Json,
-            "minimal" => OutputFormat::Minimal,
-            "csv" => OutputFormat::Csv,
-            _ => OutputFormat::Human,
+        let format = if config.json {
+            OutputFormat::Json
+        } else if config.csv_file.is_some() {
+            OutputFormat::Csv
+        } else {
+            OutputFormat::Human
         };
 
         Self {

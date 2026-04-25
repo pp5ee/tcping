@@ -11,7 +11,7 @@ pub mod output;
 pub use cli::Cli;
 pub use config::{Config, ProtocolFamily, OutputConfig};
 pub use tcping::{TcpPing, ProbeResult, Statistics};
-pub use output::{OutputManager, OutputFormatter, ConsoleFormatter, JsonFormatter};
+pub use output::{OutputManager, OutputFormat};
 
 /// Main entry point for programmatic usage
 pub struct TcpPingBuilder {

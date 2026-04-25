@@ -1,12 +1,25 @@
 [build]
-# Default build target
-# target = "x86_64-unknown-linux-gnu"
+# Default target for this project
+target = "x86_64-unknown-linux-gnu"
 
 [target.x86_64-unknown-linux-gnu]
+# Linux target configuration
 linker = "x86_64-linux-gnu-gcc"
 
+[target.aarch64-unknown-linux-gnu]
+# Linux ARM64 target configuration
+linker = "aarch64-linux-gnu-gcc"
+
 [target.x86_64-apple-darwin]
-linker = "x86_64-apple-darwin-gcc"
+# macOS Intel target configuration
+linker = "x86_64-apple-darwin-clang"
+ar-linker = "x86_64-apple-darwin-ar"
 
 [target.aarch64-apple-darwin]
-linker = "aarch64-apple-darwin-gcc"
+# macOS Apple Silicon target configuration
+linker = "aarch64-apple-darwin-clang"
+ar-linker = "aarch64-apple-darwin-ar"
+
+[env]
+# Environment variables for cross-compilation
+RUSTFLAGS = "-C target-feature=+crt-static"
