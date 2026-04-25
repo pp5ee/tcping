@@ -6,6 +6,7 @@ pub mod cli;
 pub mod config;
 pub mod tcping;
 pub mod output;
+pub mod stats;
 
 // Re-export main types for easy access
 pub use cli::Cli;
@@ -89,3 +90,6 @@ mod tests {
         assert!(true);
     }
 }
+
+#[cfg(test)]
+mod integration_tests;
