@@ -1,228 +1,178 @@
-use crate::tcping::{ProbeResult, Statistics};
 use crate::config::OutputConfig;
+use crate::tcping::{ProbeResult, Statistics};
 use colored::*;
-use serde::{Deserialize, Serialize};
+use std::io::{self, Write};
 
-/// Output formatter trait for different output formats
-pub trait OutputFormatter {
-    /// Format a single probe result
-    fn format_probe(&self, result: &ProbeResult) -> String;
-
-    /// Format final statistics
-    fn format_stats(&self, stats: &Statistics) -> String;
+/// Output format options
+#[derive(Debug, Clone, PartialEq)]
+pub enum OutputFormat {
+    /// Human-readable colored output (default)
+    Human,
+    /// JSON format for machine processing
+    Json,
+    /// Minimal output (just success/failure)
+    Minimal,
+    /// CSV format for data analysis
+    Csv,
 }
 
-/// Console output formatter
-pub struct ConsoleFormatter {
-    config: OutputConfig,
-}
-
-impl ConsoleFormatter {
-    pub fn new(config: OutputConfig) -> Self {
-        Self { config }
+impl Default for OutputFormat {
+    fn default() -> Self {
+        Self::Human
     }
 }
 
-impl OutputFormatter for ConsoleFormatter {
-    fn format_probe(&self, result: &ProbeResult) -> String {
-        let timestamp = if self.config.timestamps {
-            format!("[{}] ", chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"))
-        } else {
-            String::new()
-        };
-
-        let target_str = format!("{}:{}", result.target_addr.ip(), result.target_addr.port());
-
-        if result.success {
-            let rtt = result.rtt.unwrap_or(0.0);
-            let status = if self.config.color {
-                format!("{} {:.2}ms", "✓".green(), rtt)
-            } else {
-                format!("✓ {:.2}ms", rtt)
-            };
-
-            if let Some(source_addr) = result.source_addr {
-                if self.config.show_source_address {
-                    format!("{}{} from {}: {}", timestamp, target_str, source_addr, status)
-                } else {
-                    format!("{}{}: {}", timestamp, target_str, status)
-                }
-            } else {
-                format!("{}{}: {}", timestamp, target_str, status)
-            }
-        } else {
-            let error = result.error.as_deref().unwrap_or("Unknown error");
-            let status = if self.config.color {
-                format!("{} {}", "✗".red(), error)
-            } else {
-                format!("✗ {}", error)
-            };
-
-            if self.config.show_failures_only || !self.config.show_failures_only {
-                format!("{}{}: {}", timestamp, target_str, status)
-            } else {
-                String::new()
-            }
-        }
-    }
-
-    fn format_stats(&self, stats: &Statistics) -> String {
-        let duration = if let Some(start_time) = stats.start_time {
-            start_time.elapsed()
-        } else {
-            return "No statistics available".to_string();
-        };
-
-        let mut output = vec![];
-
-        if self.config.color {
-            output.push(format!("{} TCP Ping Statistics", "=".repeat(30).bold()));
-        } else {
-            output.push(format!("{} TCP Ping Statistics", "=".repeat(30)));
-        }
-
-        output.push(format!("Probes sent: {}", stats.total_probes));
-        output.push(format!("Successful: {} ({:.1}%)", stats.successful_probes, 100.0 - stats.packet_loss));
-        output.push(format!("Failed: {} ({:.1}% loss)", stats.failed_probes, stats.packet_loss));
-
-        if let Some(avg_rtt) = stats.avg_rtt {
-            output.push(format!("Average RTT: {:.2}ms", avg_rtt));
-        }
-
-        if let Some(min_rtt) = stats.min_rtt {
-            output.push(format!("Minimum RTT: {:.2}ms", min_rtt));
-        }
-
-        if let Some(max_rtt) = stats.max_rtt {
-            output.push(format!("Maximum RTT: {:.2}ms", max_rtt));
-        }
-
-        output.push(format!("Duration: {:.2}s", duration.as_secs_f64()));
-        output.push(format!("Longest success streak: {}", stats.longest_success_streak));
-        output.push(format!("Longest failure streak: {}", stats.longest_failure_streak));
-
-        output.join("\n")
-    }
-}
-
-/// JSON output formatter
-pub struct JsonFormatter {
-    config: OutputConfig,
-}
-
-impl JsonFormatter {
-    pub fn new(config: OutputConfig) -> Self {
-        Self { config }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct JsonProbeResult {
-    success: bool,
-    rtt: Option<f64>,
-    error: Option<String>,
-    source_addr: Option<String>,
-    timestamp: String,
-    target_addr: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct JsonStatistics {
-    total_probes: u32,
-    successful_probes: u32,
-    failed_probes: u32,
-    min_rtt: Option<f64>,
-    max_rtt: Option<f64>,
-    avg_rtt: Option<f64>,
-    packet_loss: f64,
-    duration_seconds: f64,
-    longest_success_streak: u32,
-    longest_failure_streak: u32,
-}
-
-impl OutputFormatter for JsonFormatter {
-    fn format_probe(&self, result: &ProbeResult) -> String {
-        let json_result = JsonProbeResult {
-            success: result.success,
-            rtt: result.rtt,
-            error: result.error.clone(),
-            source_addr: result.source_addr.map(|addr| addr.to_string()),
-            timestamp: chrono::Local::now().to_rfc3339(),
-            target_addr: result.target_addr.to_string(),
-        };
-
-        if self.config.pretty {
-            serde_json::to_string_pretty(&json_result).unwrap_or_else(|_| "{}".to_string())
-        } else {
-            serde_json::to_string(&json_result).unwrap_or_else(|_| "{}".to_string())
-        }
-    }
-
-    fn format_stats(&self, stats: &Statistics) -> String {
-        let duration = if let Some(start_time) = stats.start_time {
-            start_time.elapsed().as_secs_f64()
-        } else {
-            0.0
-        };
-
-        let json_stats = JsonStatistics {
-            total_probes: stats.total_probes,
-            successful_probes: stats.successful_probes,
-            failed_probes: stats.failed_probes,
-            min_rtt: stats.min_rtt,
-            max_rtt: stats.max_rtt,
-            avg_rtt: stats.avg_rtt,
-            packet_loss: stats.packet_loss,
-            duration_seconds: duration,
-            longest_success_streak: stats.longest_success_streak,
-            longest_failure_streak: stats.longest_failure_streak,
-        };
-
-        if self.config.pretty {
-            serde_json::to_string_pretty(&json_stats).unwrap_or_else(|_| "{}".to_string())
-        } else {
-            serde_json::to_string(&json_stats).unwrap_or_else(|_| "{}".to_string())
-        }
-    }
-}
-
-/// Output manager that handles multiple output formats
+/// Manages output formatting for TCP ping results
 pub struct OutputManager {
-    formatters: Vec<Box<dyn OutputFormatter>>,
+    config: OutputConfig,
+    format: OutputFormat,
 }
 
 impl OutputManager {
     pub fn new(config: &OutputConfig) -> Self {
-        let mut formatters: Vec<Box<dyn OutputFormatter>> = Vec::new();
+        let format = match config.format.as_str() {
+            "json" => OutputFormat::Json,
+            "minimal" => OutputFormat::Minimal,
+            "csv" => OutputFormat::Csv,
+            _ => OutputFormat::Human,
+        };
 
-        // Always include console output
-        formatters.push(Box::new(ConsoleFormatter::new(config.clone())));
-
-        // Add JSON output if requested
-        if config.json {
-            formatters.push(Box::new(JsonFormatter::new(config.clone())));
+        Self {
+            config: config.clone(),
+            format,
         }
-
-        Self { formatters }
     }
 
-    /// Output a probe result using all configured formatters
+    /// Output a single probe result
     pub fn output_probe(&self, result: &ProbeResult) {
-        for formatter in &self.formatters {
-            let output = formatter.format_probe(result);
-            if !output.is_empty() {
-                println!("{}", output);
-            }
+        match self.format {
+            OutputFormat::Human => self.output_probe_human(result),
+            OutputFormat::Json => self.output_probe_json(result),
+            OutputFormat::Minimal => self.output_probe_minimal(result),
+            OutputFormat::Csv => self.output_probe_csv(result),
         }
     }
 
-    /// Output final statistics using all configured formatters
+    /// Output final statistics
     pub fn output_stats(&self, stats: &Statistics) {
-        for formatter in &self.formatters {
-            let output = formatter.format_stats(stats);
-            if !output.is_empty() {
-                println!("{}", output);
-            }
+        match self.format {
+            OutputFormat::Human => self.output_stats_human(stats),
+            OutputFormat::Json => self.output_stats_json(stats),
+            OutputFormat::Minimal => self.output_stats_minimal(stats),
+            OutputFormat::Csv => self.output_stats_csv(stats),
         }
+    }
+
+    fn output_probe_human(&self, result: &ProbeResult) {
+        if result.success {
+            println!(
+                "{} bytes from {}: {} time={:.2} ms",
+                64, // Standard ICMP-like packet size for compatibility
+                result.target_addr,
+                "seq=1".bright_black(), // Placeholder sequence number
+                result.rtt.unwrap_or(0.0)
+            );
+        } else {
+            println!(
+                "{}: {}",
+                result.target_addr.to_string().red(),
+                result.error.as_ref().unwrap_or(&"unknown error".to_string()).red()
+            );
+        }
+    }
+
+    fn output_probe_json(&self, result: &ProbeResult) {
+        let json_output = serde_json::json!({
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "success": result.success,
+            "target": result.target_addr.to_string(),
+            "rtt_ms": result.rtt,
+            "error": result.error,
+            "source_addr": result.source_addr.map(|addr| addr.to_string())
+        });
+        println!("{}", json_output);
+    }
+
+    fn output_probe_minimal(&self, result: &ProbeResult) {
+        if result.success {
+            println!("OK");
+        } else {
+            println!("FAIL");
+        }
+    }
+
+    fn output_probe_csv(&self, result: &ProbeResult) {
+        let timestamp = chrono::Utc::now().to_rfc3339();
+        let success = if result.success { "true" } else { "false" };
+        let rtt = result.rtt.unwrap_or(0.0);
+        let error = result.error.as_ref().unwrap_or(&"".to_string());
+
+        println!("{},{},{},{:.2},{}", timestamp, success, result.target_addr, rtt, error);
+    }
+
+    fn output_stats_human(&self, stats: &Statistics) {
+        println!("\n--- TCP Ping Statistics ---");
+        println!("{} packets transmitted, {} received, {:.1}% packet loss",
+            stats.total_probes.to_string().bold(),
+            stats.successful_probes.to_string().green().bold(),
+            stats.packet_loss
+        );
+
+        if let (Some(min), Some(max), Some(avg)) = (stats.min_rtt, stats.max_rtt, stats.avg_rtt) {
+            println!("rtt min/avg/max = {:.2}/{:.2}/{:.2} ms",
+                min.to_string().green(),
+                avg.to_string().yellow(),
+                max.to_string().red()
+            );
+        }
+
+        if let Some(start_time) = stats.start_time {
+            let duration = start_time.elapsed();
+            println!("Duration: {:.2} seconds", duration.as_secs_f64());
+        }
+
+        println!("Longest success streak: {}", stats.longest_success_streak);
+        println!("Longest failure streak: {}", stats.longest_failure_streak);
+    }
+
+    fn output_stats_json(&self, stats: &Statistics) {
+        let json_output = serde_json::json!({
+            "statistics": {
+                "total_probes": stats.total_probes,
+                "successful_probes": stats.successful_probes,
+                "failed_probes": stats.failed_probes,
+                "packet_loss_percent": stats.packet_loss,
+                "min_rtt_ms": stats.min_rtt,
+                "max_rtt_ms": stats.max_rtt,
+                "avg_rtt_ms": stats.avg_rtt,
+                "longest_success_streak": stats.longest_success_streak,
+                "longest_failure_streak": stats.longest_failure_streak,
+                "duration_seconds": stats.start_time.map(|t| t.elapsed().as_secs_f64())
+            }
+        });
+        println!("{}", json_output);
+    }
+
+    fn output_stats_minimal(&self, stats: &Statistics) {
+        println!("Transmitted: {}, Received: {}, Loss: {:.1}%",
+            stats.total_probes, stats.successful_probes, stats.packet_loss);
+    }
+
+    fn output_stats_csv(&self, stats: &Statistics) {
+        let timestamp = chrono::Utc::now().to_rfc3339();
+        let min_rtt = stats.min_rtt.unwrap_or(0.0);
+        let max_rtt = stats.max_rtt.unwrap_or(0.0);
+        let avg_rtt = stats.avg_rtt.unwrap_or(0.0);
+
+        println!("{},{},{},{},{:.1},{:.2},{:.2},{:.2},{},{}",
+            timestamp,
+            stats.total_probes,
+            stats.successful_probes,
+            stats.failed_probes,
+            stats.packet_loss,
+            min_rtt, avg_rtt, max_rtt,
+            stats.longest_success_streak,
+            stats.longest_failure_streak
+        );
     }
 }
