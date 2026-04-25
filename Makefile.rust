@@ -1,0 +1,113 @@
+# Makefile for tcping Rust cross-compilation and packaging
+
+# Variables
+VERSION := 2.7.1
+TARGET_LINUX := x86_64-unknown-linux-gnu
+TARGET_MACOS := x86_64-apple-darwin
+BUILD_DIR := target
+RELEASE_DIR := release
+
+# Default target
+all: build
+
+# Build for all platforms
+build: build-linux build-macos
+
+# Build for Linux (Ubuntu)
+build-linux:
+	@echo "Building for Linux (Ubuntu)..."
+	cargo build --release --target $(TARGET_LINUX)
+	@mkdir -p $(RELEASE_DIR)/linux
+	cp $(BUILD_DIR)/$(TARGET_LINUX)/release/tcping $(RELEASE_DIR)/linux/
+	@echo "Linux build complete: $(RELEASE_DIR)/linux/tcping"
+
+# Build for macOS
+build-macos:
+	@echo "Building for macOS..."
+	cargo build --release --target $(TARGET_MACOS)
+	@mkdir -p $(RELEASE_DIR)/macos
+	cp $(BUILD_DIR)/$(TARGET_MACOS)/release/tcping $(RELEASE_DIR)/macos/
+	@echo "macOS build complete: $(RELEASE_DIR)/macos/tcping"
+
+# Create Ubuntu .deb package
+deb: build-linux
+	@echo "Creating Ubuntu .deb package..."
+	@mkdir -p $(RELEASE_DIR)/deb/DEBIAN
+	@mkdir -p $(RELEASE_DIR)/deb/usr/bin
+
+	# Create control file
+	@echo "Package: tcping" > $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo "Version: $(VERSION)" >> $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo "Section: net" >> $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo "Priority: optional" >> $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo "Architecture: amd64" >> $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo "Maintainer: Rust Rewrite <tcping@example.com>" >> $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo "Description: TCP ping utility" >> $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo " TCP ping utility for measuring network connectivity and latency." >> $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo "Depends: libc6" >> $(RELEASE_DIR)/deb/DEBIAN/control
+
+	# Copy binary
+	cp $(RELEASE_DIR)/linux/tcping $(RELEASE_DIR)/deb/usr/bin/
+
+	# Build package
+	dpkg-deb --build $(RELEASE_DIR)/deb $(RELEASE_DIR)/tcping_$(VERSION)_amd64.deb
+	@echo "Debian package created: $(RELEASE_DIR)/tcping_$(VERSION)_amd64.deb"
+
+# Create macOS .tar.gz package
+tar: build-macos
+	@echo "Creating macOS .tar.gz package..."
+	@mkdir -p $(RELEASE_DIR)/tar/tcping-$(VERSION)-macos/bin
+	@mkdir -p $(RELEASE_DIR)/tar/tcping-$(VERSION)-macos/share/doc
+
+	# Copy binary
+	cp $(RELEASE_DIR)/macos/tcping $(RELEASE_DIR)/tar/tcping-$(VERSION)-macos/bin/
+
+	# Create README
+	@echo "tcping $(VERSION) - TCP ping utility for macOS" > $(RELEASE_DIR)/tar/tcping-$(VERSION)-macos/share/doc/README
+	@echo "Usage: ./bin/tcping <host> <port>" >> $(RELEASE_DIR)/tar/tcping-$(VERSION)-macos/share/doc/README
+
+	# Create tarball
+	cd $(RELEASE_DIR)/tar && tar -czf ../tcping-$(VERSION)-macos-x86_64.tar.gz tcping-$(VERSION)-macos/
+	@echo "macOS tarball created: $(RELEASE_DIR)/tcping-$(VERSION)-macos-x86_64.tar.gz"
+
+# Create all release packages
+release: deb tar
+	@echo "Release packages created:"
+	@echo "  - $(RELEASE_DIR)/tcping_$(VERSION)_amd64.deb (Ubuntu)"
+	@echo "  - $(RELEASE_DIR)/tcping-$(VERSION)-macos-x86_64.tar.gz (macOS)"
+
+# Run tests
+test:
+	cargo test --verbose
+
+# Clean build artifacts
+clean:
+	cargo clean
+	rm -rf $(RELEASE_DIR)
+	rm -rf debian
+	rm -rf macos
+
+# Install dependencies (cross-compilation toolchains)
+setup-deps:
+	@echo "Setting up cross-compilation toolchains..."
+	# Install Linux target
+	rustup target add $(TARGET_LINUX)
+	# Install macOS target (requires cross toolchain)
+	rustup target add $(TARGET_MACOS)
+	@echo "Dependencies installed"
+
+# Show help
+help:
+	@echo "Available targets:"
+	@echo "  build        - Build for all platforms"
+	@echo "  build-linux  - Build for Linux (Ubuntu)"
+	@echo "  build-macos  - Build for macOS"
+	@echo "  deb          - Create Ubuntu .deb package"
+	@echo "  tar          - Create macOS .tar.gz package"
+	@echo "  release      - Create all release packages"
+	@echo "  test         - Run tests"
+	@echo "  clean        - Clean build artifacts"
+	@echo "  setup-deps   - Install cross-compilation dependencies"
+	@echo "  help         - Show this help"
+
+.PHONY: all build build-linux build-macos deb tar release test clean setup-deps help
