@@ -1,16 +1,16 @@
 {
   "answers": [
     {
-      "header": "Q1Proceed or Review",
+      "header": "Q1Proceed?",
       "items": [
         {
           "letter": "A",
           "label": "Proceed with RLCR loop",
-          "description": "Continue with the implementation despite the quiz results"
+          "description": "Continue with the implementation despite the incomplete quiz"
         }
       ]
     }
   ],
-  "raw": "Q1Proceed or Review: Proceed with RLCR loop",
-  "ts": 1777103497000
+  "raw": "Q1Proceed?: Proceed with RLCR loop",
+  "ts": 1777105472936
 }
