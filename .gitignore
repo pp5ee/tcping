@@ -20,3 +20,6 @@ VALIDATION_REPORT.md
 rlcr-summary.md
 round-1-summary.md
 test_output.csv
+# Build artifacts
+tcping_*_amd64/
+tcping_*_aarch64/
