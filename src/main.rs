@@ -1,10 +1,10 @@
 use clap::Parser;
 use std::process;
-use tokio;
 
 mod cli;
 mod config;
 mod output;
+mod stats;
 mod tcping;
 
 use crate::cli::Cli;
@@ -15,6 +15,12 @@ use crate::tcping::TcpPing;
 async fn main() {
     // Parse command line arguments
     let cli = Cli::parse();
+
+    // Validate CLI arguments
+    if let Err(e) = cli.validate() {
+        eprintln!("Configuration error: {}", e);
+        process::exit(1);
+    }
 
     // Convert CLI arguments to configuration
     let config = match Config::from_cli(&cli) {

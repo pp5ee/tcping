@@ -1,12 +1,63 @@
 [package]
 name = "tcping"
-version = "0.1.0"
+version = "2.7.1"
 edition = "2021"
+description = "Ping TCP ports using tcping. Inspired by Linux's ping utility. Written in Rust"
+authors = ["Rust Rewrite"]
+license = ""
+readme = "README.md"
+repository = ""
+
+[package.metadata.deb]
+maintainer = "Rust Rewrite"
+section = "custom"
+priority = "optional"
+assets = [
+    ["target/release/tcping", "/usr/bin/", "755"],
+]
 
 [dependencies]
-clap = { version = "4.0", features = ["derive"] }
+# Core dependencies for networking and async
 tokio = { version = "1.0", features = ["full"] }
+
+# Command-line argument parsing
+clap = { version = "4.0", features = ["derive", "cargo"] }
+
+# DNS resolution and networking
+dns-lookup = "2.0"
+
+# Terminal output and formatting
 colored = "2.0"
-chrono = { version = "0.4", features = ["serde"] }
+
+# JSON output support
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+
+# CSV output support
+csv = "1.0"
+
+# SQLite database support (for -db flag)
+rusqlite = { version = "0.30", features = ["bundled"] }
+
+# Cross-platform signal handling
+ctrlc = "3.0"
+
+# Time and duration handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Random number generation (for IP selection)
+rand = "0.8"
+
+[dev-dependencies]
+# Testing dependencies
+assert_cmd = "2.0"
+predicates = "2.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[[bin]]
+name = "tcping"
+path = "src/main.rs"

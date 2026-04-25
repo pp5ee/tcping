@@ -1,0 +1,12 @@
+[package]
+name = "tcping"
+version = "2.7.1"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+colored = "2.0"
+
+[[bin]]
+name = "tcping"
+path = "src/main.rs"
