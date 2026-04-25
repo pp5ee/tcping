@@ -1,0 +1,38 @@
+[package]
+name = "tcping-rs"
+version = "0.1.0"
+edition = "2021"
+authors = ["tcping-rs"]
+description = "A TCP ping tool rewritten in Rust"
+license = "MIT"
+repository = "https://github.com/pouriyajamshidi/tcping"
+readme = "README.md"
+
+[dependencies]
+tokio = { version = "1.0", features = ["full"] }
+clap = { version = "4.0", features = ["derive", "env"] }
+anyhow = "1.0"
+thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+csv = "1.0"
+colored = "2.0"
+tokio-util = "0.7"
+futures = "0.3"
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[profile.release]
+lto = true
+panic = "abort"
+codegen-units = 1
+
+[package.metadata.deb]
+maintainer = "tcping-rs"
+depends = "libc6 (>= 2.28)"
+extended-description = "A TCP ping tool for measuring network connectivity and latency"
+
+[package.metadata.deb.assets]
+"target/release/tcping-rs" = "/usr/bin/tcping"

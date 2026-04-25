@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and Package
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-apple-darwin
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Create Linux package
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        run: |
+          mkdir -p package/DEBIAN package/usr/bin package/usr/share/doc/tcping-rs
+          cp target/${{ matrix.target }}/release/tcping-rs package/usr/bin/tcping
+          chmod 755 package/usr/bin/tcping
+          cp README.md package/usr/share/doc/tcping-rs/
+
+          cat > package/DEBIAN/control << EOF
+          Package: tcping-rs
+          Version: ${GITHUB_REF_NAME#v}
+          Section: net
+          Priority: optional
+          Architecture: amd64
+          Maintainer: tcping-rs <noreply@example.com>
+          Description: A TCP ping tool rewritten in Rust
+           A tool for measuring network connectivity and latency using TCP probes.
+          EOF
+
+          dpkg-deb --build package tcping-rs_${GITHUB_REF_NAME#v}_amd64.deb
+
+      - name: Create macOS package
+        if: matrix.target == 'x86_64-apple-darwin'
+        run: |
+          mkdir -p package-macos
+          cp target/${{ matrix.target }}/release/tcping-rs package-macos/tcping
+          chmod 755 package-macos/tcping
+          cp README.md package-macos/
+          tar -czf tcping-rs-${GITHUB_REF_NAME#v}-x86_64-apple-darwin.tar.gz -C package-macos .
+
+      - name: Upload Linux package
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcping-rs-linux-deb
+          path: tcping-rs_${GITHUB_REF_NAME#v}_amd64.deb
+
+      - name: Upload macOS package
+        if: matrix.target == 'x86_64-apple-darwin'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcping-rs-macos-tar-gz
+          path: tcping-rs-${GITHUB_REF_NAME#v}-x86_64-apple-darwin.tar.gz
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: tcping-rs-binaries-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/tcping-rs
+
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download Linux package
+        uses: actions/download-artifact@v4
+        with:
+          name: tcping-rs-linux-deb
+
+      - name: Download macOS package
+        uses: actions/download-artifact@v4
+        with:
+          name: tcping-rs-macos-tar-gz
+
+      - name: Download Linux binary
+        uses: actions/download-artifact@v4
+        with:
+          name: tcping-rs-binaries-x86_64-unknown-linux-gnu
+
+      - name: Download macOS binary
+        uses: actions/download-artifact@v4
+        with:
+          name: tcping-rs-binaries-x86_64-apple-darwin
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            tcping-rs_*.deb
+            tcping-rs-*.tar.gz
+            tcping-rs-x86_64-unknown-linux-gnu
+            tcping-rs-x86_64-apple-darwin
+          generate_release_notes: true
