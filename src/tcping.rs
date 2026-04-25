@@ -1,6 +1,6 @@
 use crate::config::{Config, ProtocolFamily};
 use std::net::{SocketAddr, ToSocketAddrs};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tokio::net::TcpStream;
 use tokio::time::timeout;
 
@@ -53,66 +53,56 @@ pub struct Statistics {
     /// Packet loss percentage
     pub packet_loss: f64,
 
-    /// Start time of the session
-    pub start_time: Option<Instant>,
-
-    /// Longest successful streak
-    pub longest_success_streak: u32,
-
-    /// Longest failure streak
-    pub longest_failure_streak: u32,
-
-    /// Current success/failure streak
+    /// Current streak of consecutive successes/failures
     pub current_streak: u32,
 
-    /// Whether current streak is success (true) or failure (false)
+    /// Whether the current streak is for successes (true) or failures (false)
     pub current_streak_success: bool,
+
+    /// Longest streak of consecutive successes
+    pub longest_success_streak: u32,
+
+    /// Longest streak of consecutive failures
+    pub longest_failure_streak: u32,
 }
 
-/// Main TCP ping engine
-pub struct TcpPing {
-    /// Configuration
+/// Main TCPing implementation
+pub struct TCPing {
+    /// Configuration for the TCPing session
     config: Config,
 
-    /// Current statistics
+    /// Statistics for the current session
     stats: Statistics,
-
-    /// Resolved target addresses
-    resolved_targets: Vec<SocketAddr>,
-
-    /// Current target index for round-robin
-    current_target_index: usize,
 }
 
-impl TcpPing {
-    /// Create a new TCP ping instance
+impl TCPing {
+    /// Create a new TCPing instance with the given configuration
     pub fn new(config: Config) -> Self {
         Self {
             config,
             stats: Statistics::default(),
-            resolved_targets: Vec::new(),
-            current_target_index: 0,
         }
     }
 
-    /// Run the TCP ping session
+    /// Run the TCPing session
     pub async fn run(&mut self) -> Result<(), String> {
-        // Resolve target addresses
-        self.resolve_targets().await?;
+        // Resolve target address
+        let target_addrs = self.resolve_target().await?;
 
-        if self.resolved_targets.is_empty() {
-            return Err("No valid addresses found for target".to_string());
+        if target_addrs.is_empty() {
+            return Err(format!("Could not resolve target: {}:{}", self.config.hostname, self.config.port));
         }
 
-        // Initialize statistics
-        self.stats.start_time = Some(Instant::now());
+        println!("TCPing {}:{} ({}) with 32 bytes of data:",
+                 self.config.hostname,
+                 self.config.port,
+                 target_addrs[0]);
 
         // Main ping loop
         let mut probe_count = 0;
-        let mut consecutive_failures = 0;
 
         loop {
-            // Check if we should stop
+            // Check if we've reached the probe limit
             if let Some(max_probes) = self.config.max_probes {
                 if probe_count >= max_probes {
                     break;
@@ -120,37 +110,19 @@ impl TcpPing {
             }
 
             // Perform the probe
-            let result = self.probe().await;
+            let result = self.probe_target(&target_addrs[0]).await;
 
             // Update statistics
             self.update_stats(&result);
-
-            // Update consecutive failures count for hostname retry logic
-            if result.success {
-                consecutive_failures = 0;
-            } else {
-                consecutive_failures += 1;
-            }
-
-            // Check if we need to retry hostname resolution
-            if self.config.retry_resolution > 0 && consecutive_failures >= self.config.retry_resolution {
-                println!("Retrying hostname resolution after {} consecutive failures", consecutive_failures);
-                self.resolve_targets().await?;
-                consecutive_failures = 0; // Reset after retry
-            }
 
             // Output the result
             self.output_result(&result).await?;
 
             probe_count += 1;
 
-            // Wait for the next interval or Ctrl+C
-            tokio::select! {
-                _ = tokio::time::sleep(self.config.interval) => {},
-                _ = tokio::signal::ctrl_c() => {
-                    println!("\nReceived interrupt signal, stopping...");
-                    break;
-                }
+            // Wait for the next probe
+            if probe_count < self.config.max_probes.unwrap_or(u32::MAX) {
+                tokio::time::sleep(self.config.interval).await;
             }
         }
 
@@ -160,75 +132,52 @@ impl TcpPing {
         Ok(())
     }
 
-    /// Resolve target addresses based on configuration
-    async fn resolve_targets(&mut self) -> Result<(), String> {
-        let hostname = self.config.hostname();
-        let port = self.config.port;
+    /// Resolve the target address
+    async fn resolve_target(&self) -> Result<Vec<SocketAddr>, String> {
+        let target = &format!("{}:{}", self.config.hostname, self.config.port);
 
-        // Create socket address string for resolution
-        let addr_string = format!("{}:{}", hostname, port);
+        // Handle host:port format
+        let (host, port) = if let Some(colon_pos) = target.rfind(':') {
+            let (host_part, port_part) = target.split_at(colon_pos);
+            let port_str = &port_part[1..]; // Remove the ':'
 
-        // Resolve addresses
-        let addresses: Vec<SocketAddr> = addr_string
-            .to_socket_addrs()
-            .map_err(|e| format!("Failed to resolve {}: {}", addr_string, e))?
-            .collect();
-
-        if addresses.is_empty() {
-            return Err(format!("No addresses found for {}", addr_string));
-        }
-
-        // Filter addresses based on protocol family preference
-        self.resolved_targets = match self.config.protocol_family {
-            ProtocolFamily::IPv4Only => addresses
-                .into_iter()
-                .filter(|addr| addr.is_ipv4())
-                .collect(),
-            ProtocolFamily::IPv6Only => addresses
-                .into_iter()
-                .filter(|addr| addr.is_ipv6())
-                .collect(),
-            ProtocolFamily::Any => addresses,
+            match port_str.parse::<u16>() {
+                Ok(port) => (host_part, port),
+                Err(_) => return Err(format!("Invalid port number: {}", port_str)),
+            }
+        } else {
+            return Err(format!("Target must be in format 'host:port' or 'host port', got: {}", target));
         };
 
-        if self.resolved_targets.is_empty() {
-            return Err(format!(
-                "No {} addresses found for {}",
-                match self.config.protocol_family {
-                    ProtocolFamily::IPv4Only => "IPv4",
-                    ProtocolFamily::IPv6Only => "IPv6",
-                    ProtocolFamily::Any => "valid",
-                },
-                addr_string
-            ));
+        // Resolve host to socket addresses
+        let addrs = format!("{}:{}", host, port)
+            .to_socket_addrs()
+            .map_err(|e| format!("Failed to resolve {}: {}", host, e))?
+            .collect::<Vec<_>>();
+
+        if addrs.is_empty() {
+            return Err(format!("No addresses found for {}", host));
         }
 
-        Ok(())
+        Ok(addrs)
     }
 
     /// Perform a single TCP ping probe
-    async fn probe(&mut self) -> ProbeResult {
+    async fn probe_target(&self, target_addr: &SocketAddr) -> ProbeResult {
         let start_time = Instant::now();
 
-        // Get next target address (round-robin)
-        let target_addr = self.resolved_targets[self.current_target_index];
-        self.current_target_index = (self.current_target_index + 1) % self.resolved_targets.len();
+        // Attempt TCP connection with timeout
+        let connect_result = timeout(self.config.timeout, TcpStream::connect(target_addr)).await;
 
-        // Attempt TCP connection with timeout and optional interface binding
-        let connection_result = if let Some(interface) = &self.config.interface {
-            // Use interface binding if specified
-            self.connect_with_interface(&target_addr, interface).await
-        } else {
-            // Use standard connection
-            timeout(self.config.timeout, TcpStream::connect(&target_addr)).await
-        };
-
-        match connection_result {
+        match connect_result {
             Ok(Ok(stream)) => {
+                // Connection successful - measure RTT
                 let rtt = start_time.elapsed().as_secs_f64() * 1000.0; // Convert to milliseconds
+
+                // Get local address
                 let source_addr = stream.local_addr().ok();
 
-                // Close the connection immediately
+                // Close the connection
                 drop(stream);
 
                 ProbeResult {
@@ -237,61 +186,30 @@ impl TcpPing {
                     error: None,
                     source_addr,
                     timestamp: start_time,
-                    target_addr,
+                    target_addr: *target_addr,
                 }
             }
-            Ok(Err(e)) => ProbeResult {
-                success: false,
-                rtt: None,
-                error: Some(format!("Connection failed: {}", e)),
-                source_addr: None,
-                timestamp: start_time,
-                target_addr,
-            },
-            Err(_) => ProbeResult {
-                success: false,
-                rtt: None,
-                error: Some(format!("Connection timeout after {:?}", self.config.timeout)),
-                source_addr: None,
-                timestamp: start_time,
-                target_addr,
-            },
-        }
-    }
-
-    /// Connect to target with specific interface binding
-    async fn connect_with_interface(&self, target_addr: &SocketAddr, interface: &str) -> Result<Result<TcpStream, std::io::Error>, tokio::time::error::Elapsed> {
-        use std::net::IpAddr;
-
-        // Parse interface as IP address
-        match interface.parse::<IpAddr>() {
-            Ok(interface_ip) => {
-                // Interface is an IP address - bind to it
-                let local_addr = SocketAddr::new(interface_ip, 0); // Use port 0 for automatic assignment
-
-                // Create a custom dialer with local address binding
-                let dialer = match tokio::net::TcpSocket::new_v4()
-                    .or_else(|_| tokio::net::TcpSocket::new_v6())
-                {
-                    Ok(dialer) => dialer,
-                    Err(e) => return Ok(Err(std::io::Error::new(std::io::ErrorKind::Other, e))),
-                };
-
-                // Bind to the local address
-                match dialer.bind(local_addr) {
-                    Ok(_) => {},
-                    Err(e) => return Ok(Err(std::io::Error::new(std::io::ErrorKind::AddrNotAvailable, e))),
+            Ok(Err(e)) => {
+                // Connection failed
+                ProbeResult {
+                    success: false,
+                    rtt: None,
+                    error: Some(format!("Connection failed: {}", e)),
+                    source_addr: None,
+                    timestamp: start_time,
+                    target_addr: *target_addr,
                 }
-
-                // Connect with timeout
-                timeout(self.config.timeout, dialer.connect(*target_addr)).await
             }
             Err(_) => {
-                // Interface name parsing failed - treat as unsupported feature
-                Ok(Err(std::io::Error::new(
-                    std::io::ErrorKind::Unsupported,
-                    format!("Interface binding by name '{}' requires platform-specific implementation. Use IP address instead.", interface)
-                )))
+                // Timeout occurred
+                ProbeResult {
+                    success: false,
+                    rtt: None,
+                    error: Some(format!("Connection timeout after {:?}", self.config.timeout)),
+                    source_addr: None,
+                    timestamp: start_time,
+                    target_addr: *target_addr,
+                }
             }
         }
     }
@@ -340,15 +258,33 @@ impl TcpPing {
 
     /// Output a single probe result
     async fn output_result(&self, result: &ProbeResult) -> Result<(), String> {
-        let output_manager = crate::output::OutputManager::new(&self.config.output);
-        output_manager.output_probe(result);
+        if result.success {
+            if let Some(rtt) = result.rtt {
+                println!("Reply from {}: time={:.2}ms", result.target_addr, rtt);
+            }
+        } else {
+            if let Some(error) = &result.error {
+                println!("Connection to {} failed: {}", result.target_addr, error);
+            } else {
+                println!("Connection to {} failed", result.target_addr);
+            }
+        }
+
         Ok(())
     }
 
     /// Output final statistics
     async fn output_final_stats(&self) -> Result<(), String> {
-        let output_manager = crate::output::OutputManager::new(&self.config.output);
-        output_manager.output_stats(&self.stats);
+        println!("\n--- {}:{} TCP ping statistics ---", self.config.hostname, self.config.port);
+        println!("Probes sent: {}", self.stats.total_probes);
+        println!("Successful: {}", self.stats.successful_probes);
+        println!("Failed: {}", self.stats.failed_probes);
+        println!("Packet loss: {:.1}%", self.stats.packet_loss);
+
+        if let (Some(min), Some(max), Some(avg)) = (self.stats.min_rtt, self.stats.max_rtt, self.stats.avg_rtt) {
+            println!("RTT: min={:.2}ms, max={:.2}ms, avg={:.2}ms", min, max, avg);
+        }
+
         Ok(())
     }
 

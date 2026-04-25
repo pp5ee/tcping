@@ -4,16 +4,25 @@ version = "2.7.1"
 edition = "2021"
 description = "Ping TCP ports using tcping. Inspired by Linux's ping utility. Written in Rust"
 authors = ["Rust Rewrite"]
-license = ""
+license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = ""
 
+# Cross-compilation targets (commented out for now - to be implemented later)
+# [package.metadata.cross]
+# # Ubuntu/Linux target
+# linux-x86_64 = { image = "ubuntu:22.04", target = "x86_64-unknown-linux-gnu" }
+#
+# # macOS target
+# macos-x86_64 = { image = "macos-cross:latest", target = "x86_64-apple-darwin" }
+
 [package.metadata.deb]
 maintainer = "Rust Rewrite"
-section = "custom"
+section = "net"
 priority = "optional"
+depends = "libc6"
 assets = [
-    ["target/release/tcping", "/usr/bin/", "755"],
+    ["target/x86_64-unknown-linux-gnu/release/tcping", "/usr/bin/tcping", "755"],
 ]
 
 [dependencies]

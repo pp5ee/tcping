@@ -1,7 +1,17 @@
-[target.x86_64-apple-darwin]
-linker = "x86_64-apple-darwin20.4-clang"
-ar = "x86_64-apple-darwin20.4-ar"
+[build]
+# Default target for cross-compilation
+target = "x86_64-unknown-linux-gnu"
 
-[target.aarch64-apple-darwin]
-linker = "aarch64-apple-darwin20.4-clang"
-ar = "aarch64-apple-darwin20.4-ar"
+# Ubuntu/Linux target configuration
+[target.x86_64-unknown-linux-gnu]
+# Use system linker
+linker = "x86_64-linux-gnu-gcc"
+
+# macOS target configuration
+[target.x86_64-apple-darwin]
+# Use macOS SDK linker
+linker = "x86_64-apple-darwin-clang"
+
+[env]
+# Set RUSTFLAGS for optimization
+RUSTFLAGS = "-C target-cpu=native -C link-arg=-s"

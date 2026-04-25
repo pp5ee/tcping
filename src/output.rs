@@ -128,10 +128,8 @@ impl OutputManager {
             );
         }
 
-        if let Some(start_time) = stats.start_time {
-            let duration = start_time.elapsed();
-            println!("Duration: {:.2} seconds", duration.as_secs_f64());
-        }
+        // Duration tracking not implemented in current Statistics structure
+        println!("Duration: Duration tracking not implemented");
 
         println!("Longest success streak: {}", stats.longest_success_streak);
         println!("Longest failure streak: {}", stats.longest_failure_streak);
@@ -149,7 +147,7 @@ impl OutputManager {
                 "avg_rtt_ms": stats.avg_rtt,
                 "longest_success_streak": stats.longest_success_streak,
                 "longest_failure_streak": stats.longest_failure_streak,
-                "duration_seconds": stats.start_time.map(|t| t.elapsed().as_secs_f64())
+                "duration_seconds": None::<f64>
             }
         });
         println!("{}", json_output);
