@@ -5,7 +5,7 @@ mod integration_tests {
     use std::net::IpAddr;
     use std::time::Duration;
 
-    use crate::{Tcping, TcpingConfig, ProbeStatistics, ProbeResult};
+    use crate::{Tcping, TcpingConfig};
     use std::time::Instant;
     use tokio::net::TcpListener;
     use tokio::time::timeout;

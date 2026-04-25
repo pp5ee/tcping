@@ -13,12 +13,12 @@ linker = "aarch64-linux-gnu-gcc"
 [target.x86_64-apple-darwin]
 # macOS Intel target configuration
 linker = "x86_64-apple-darwin-clang"
-ar-linker = "x86_64-apple-darwin-ar"
+ar = "x86_64-apple-darwin-ar"
 
 [target.aarch64-apple-darwin]
 # macOS Apple Silicon target configuration
 linker = "aarch64-apple-darwin-clang"
-ar-linker = "aarch64-apple-darwin-ar"
+ar = "aarch64-apple-darwin-ar"
 
 [env]
 # Environment variables for cross-compilation

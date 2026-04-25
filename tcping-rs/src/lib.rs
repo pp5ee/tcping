@@ -173,7 +173,7 @@ impl Tcping {
         let config = self.config.clone();
 
         // Create a stream of probes
-        let stream = stream::iter(0..count.unwrap_or(usize::MAX))
+        let _stream = stream::iter(0..count.unwrap_or(usize::MAX))
             .then(move |_| {
                 let config = config.clone();
                 async move {

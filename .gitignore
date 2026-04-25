@@ -19,3 +19,4 @@ build.rs
 VALIDATION_REPORT.md
 rlcr-summary.md
 round-1-summary.md
+test_output.csv
