@@ -1,7 +1,7 @@
 use crate::config::OutputConfig;
 use crate::tcping::{ProbeResult, Statistics};
 use colored::*;
-use std::io::{self, Write};
+// Removed unused imports to fix compilation warnings
 
 /// Output format options
 #[derive(Debug, Clone, PartialEq)]
@@ -106,7 +106,8 @@ impl OutputManager {
         let timestamp = chrono::Utc::now().to_rfc3339();
         let success = if result.success { "true" } else { "false" };
         let rtt = result.rtt.unwrap_or(0.0);
-        let error = result.error.as_ref().unwrap_or(&"".to_string());
+        let default_error = String::new();
+        let error = result.error.as_ref().unwrap_or(&default_error);
 
         println!("{},{},{},{:.2},{}", timestamp, success, result.target_addr, rtt, error);
     }
