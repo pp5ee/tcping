@@ -1,0 +1,77 @@
+[package]
+name = "tcping"
+version = "0.1.0"
+edition = "2021"
+authors = ["tcping-rs developers"]
+description = "A TCP ping tool written in Rust"
+license = "MIT"
+repository = "https://github.com/clumsy-coder/tcping"
+readme = "README.md"
+
+[lib]
+name = "tcping"
+path = "src/lib.rs"
+
+[[bin]]
+name = "tcping"
+path = "src/main.rs"
+
+[dependencies]
+# Core networking and async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Command-line argument parsing
+clap = { version = "4.0", features = ["derive"] }
+
+# IP address handling
+net2 = "0.2"
+
+# Terminal output and formatting
+colored = "2.0"
+
+# JSON serialization for output
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# CSV output support
+csv = "1.0"
+
+# SQLite database support (optional)
+sqlx = { version = "0.7", features = ["sqlite", "runtime-tokio-rustls"] }
+
+# Signal handling for graceful shutdown
+ctrlc = "3.0"
+
+# Configuration file support
+config = "0.13"
+
+# Logging
+log = "0.4"
+env_logger = "0.10"
+
+[dev-dependencies]
+# Testing utilities
+assert_cmd = "2.0"
+predicates = "3.0"
+tempfile = "3.0"
+
+# Cross-compilation targets for Ubuntu and macOS
+[package.metadata.deb]
+maintainer = "tcping-rs developers"
+copyright = "2026, tcping-rs developers"
+section = "net"
+priority = "optional"
+
+# macOS-specific build configuration
+[package.metadata.macos]
+identifier = "com.tcping.rs"
+
+# Build configuration for release packages
+[profile.release]
+lto = true
+panic = "abort"
+codegen-units = 1
+
+# Development profile
+[profile.dev]
+panic = "unwind"
