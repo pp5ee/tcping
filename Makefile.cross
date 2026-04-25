@@ -1,0 +1,58 @@
+# Cross-compilation Makefile for TCPing
+
+# Default target
+TARGET ?= x86_64-unknown-linux-gnu
+CARGO_HOME ?= /tmp/cargo-registry
+BUILD_DIR ?= target
+
+# Available targets
+LINUX_TARGETS = x86_64-unknown-linux-gnu x86_64-unknown-linux-musl aarch64-unknown-linux-gnu
+MACOS_TARGETS = x86_64-apple-darwin aarch64-apple-darwin
+
+# Set environment for cargo
+ENV = CARGO_HOME=$(CARGO_HOME)
+
+.PHONY: all linux linux-musl aarch64 macos clean help
+
+all: linux
+
+# Linux targets
+linux: $(BUILD_DIR)/$(TARGET)/release/tcping
+
+linux-musl: TARGET = x86_64-unknown-linux-musl
+linux-musl: $(BUILD_DIR)/$(TARGET)/release/tcping
+
+aarch64: TARGET = aarch64-unknown-linux-gnu
+aarch64: $(BUILD_DIR)/$(TARGET)/release/tcping
+
+# macOS targets
+macos: $(BUILD_DIR)/x86_64-apple-darwin/release/tcping
+
+# Build rule
+$(BUILD_DIR)/%/release/tcping: Cargo.toml src/main.rs
+	@echo "Building for target: $*"
+	@mkdir -p $(CARGO_HOME)
+	@$(ENV) rustup target add $* 2>/dev/null || true
+	@$(ENV) cargo build --release --target $*
+	@echo "Build complete: $@"
+	@file $@
+	@ls -lh $@
+
+# Clean
+clean:
+	@rm -rf $(BUILD_DIR)
+	@echo "Cleaned build directories"
+
+# Help
+help:
+	@echo "Available targets:"
+	@echo "  linux       - Build for x86_64 Linux (default)"
+	@echo "  linux-musl  - Build for x86_64 Linux (musl)"
+	@echo "  aarch64     - Build for ARM64 Linux"
+	@echo "  macos       - Build for x86_64 macOS"
+	@echo "  clean       - Clean build artifacts"
+	@echo ""
+	@echo "Environment variables:"
+	@echo "  TARGET      - Specify custom target (default: x86_64-unknown-linux-gnu)"
+	@echo "  CARGO_HOME  - Cargo home directory (default: /tmp/cargo-registry)"
+	@echo "  BUILD_DIR   - Build output directory (default: target)"
