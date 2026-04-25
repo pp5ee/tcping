@@ -109,6 +109,7 @@ impl TcpPing {
 
         // Main ping loop
         let mut probe_count = 0;
+        let mut consecutive_failures = 0;
 
         loop {
             // Check if we should stop
@@ -123,6 +124,20 @@ impl TcpPing {
 
             // Update statistics
             self.update_stats(&result);
+
+            // Update consecutive failures count for hostname retry logic
+            if result.success {
+                consecutive_failures = 0;
+            } else {
+                consecutive_failures += 1;
+            }
+
+            // Check if we need to retry hostname resolution
+            if self.config.retry_resolution > 0 && consecutive_failures >= self.config.retry_resolution {
+                println!("Retrying hostname resolution after {} consecutive failures", consecutive_failures);
+                self.resolve_targets().await?;
+                consecutive_failures = 0; // Reset after retry
+            }
 
             // Output the result
             self.output_result(&result).await?;
@@ -199,8 +214,16 @@ impl TcpPing {
         let target_addr = self.resolved_targets[self.current_target_index];
         self.current_target_index = (self.current_target_index + 1) % self.resolved_targets.len();
 
-        // Attempt TCP connection with timeout
-        match timeout(self.config.timeout, TcpStream::connect(&target_addr)).await {
+        // Attempt TCP connection with timeout and optional interface binding
+        let connection_result = if let Some(interface) = &self.config.interface {
+            // Use interface binding if specified
+            self.connect_with_interface(&target_addr, interface).await
+        } else {
+            // Use standard connection
+            timeout(self.config.timeout, TcpStream::connect(&target_addr)).await
+        };
+
+        match connection_result {
             Ok(Ok(stream)) => {
                 let rtt = start_time.elapsed().as_secs_f64() * 1000.0; // Convert to milliseconds
                 let source_addr = stream.local_addr().ok();
@@ -233,6 +256,43 @@ impl TcpPing {
                 timestamp: start_time,
                 target_addr,
             },
+        }
+    }
+
+    /// Connect to target with specific interface binding
+    async fn connect_with_interface(&self, target_addr: &SocketAddr, interface: &str) -> Result<Result<TcpStream, std::io::Error>, tokio::time::error::Elapsed> {
+        use std::net::IpAddr;
+
+        // Parse interface as IP address
+        match interface.parse::<IpAddr>() {
+            Ok(interface_ip) => {
+                // Interface is an IP address - bind to it
+                let local_addr = SocketAddr::new(interface_ip, 0); // Use port 0 for automatic assignment
+
+                // Create a custom dialer with local address binding
+                let dialer = match tokio::net::TcpSocket::new_v4()
+                    .or_else(|_| tokio::net::TcpSocket::new_v6())
+                {
+                    Ok(dialer) => dialer,
+                    Err(e) => return Ok(Err(std::io::Error::new(std::io::ErrorKind::Other, e))),
+                };
+
+                // Bind to the local address
+                match dialer.bind(local_addr) {
+                    Ok(_) => {},
+                    Err(e) => return Ok(Err(std::io::Error::new(std::io::ErrorKind::AddrNotAvailable, e))),
+                }
+
+                // Connect with timeout
+                timeout(self.config.timeout, dialer.connect(*target_addr)).await
+            }
+            Err(_) => {
+                // Interface name parsing failed - treat as unsupported feature
+                Ok(Err(std::io::Error::new(
+                    std::io::ErrorKind::Unsupported,
+                    format!("Interface binding by name '{}' requires platform-specific implementation. Use IP address instead.", interface)
+                )))
+            }
         }
     }
 
