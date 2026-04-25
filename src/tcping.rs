@@ -163,7 +163,7 @@ impl TcpPing {
     /// Resolve target addresses based on configuration
     async fn resolve_targets(&mut self) -> Result<(), String> {
         let hostname = self.config.hostname();
-        let port = self.config.target.port();
+        let port = self.config.port;
 
         // Create socket address string for resolution
         let addr_string = format!("{}:{}", hostname, port);

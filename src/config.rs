@@ -1,12 +1,14 @@
 use crate::cli::Cli;
-use std::net::{IpAddr, SocketAddr};
 use std::time::Duration;
 
 /// Runtime configuration for TCP ping
 #[derive(Debug, Clone)]
 pub struct Config {
-    /// Target socket address
-    pub target: SocketAddr,
+    /// Target hostname or IP address
+    pub hostname: String,
+
+    /// Target port number
+    pub port: u16,
 
     /// Protocol family preference
     pub protocol_family: ProtocolFamily,
@@ -87,12 +89,6 @@ impl Config {
             ProtocolFamily::Any
         };
 
-        // Parse target address (will be resolved later)
-        let target = SocketAddr::new(
-            IpAddr::V4(std::net::Ipv4Addr::UNSPECIFIED), // Placeholder, will be resolved
-            cli.port
-        );
-
         // Create output configuration
         let output = OutputConfig {
             json: cli.json,
@@ -106,7 +102,8 @@ impl Config {
         };
 
         Ok(Config {
-            target,
+            hostname: cli.host.clone(),
+            port: cli.port,
             protocol_family,
             retry_resolution: cli.retry_resolution,
             max_probes: cli.count,
@@ -120,8 +117,6 @@ impl Config {
 
     /// Get the hostname from the configuration
     pub fn hostname(&self) -> String {
-        // Extract hostname from the target socket address
-        // This is a placeholder - actual resolution will happen during runtime
-        self.target.ip().to_string()
+        self.hostname.clone()
     }
 }
