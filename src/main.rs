@@ -1,4 +1,5 @@
 use clap::Parser;
+use std::env;
 use std::process;
 use tcping::cli::Cli;
 use tcping::config::Config;
@@ -6,6 +7,13 @@ use tcping::TcpPing;
 
 #[tokio::main]
 async fn main() {
+    // Check for version flag manually before parsing CLI
+    let args: Vec<String> = env::args().collect();
+    if args.iter().any(|arg| arg == "-v" || arg == "--version") {
+        println!("tcping 2.7.1");
+        return;
+    }
+
     // Parse command line arguments
     let cli = Cli::parse();
 

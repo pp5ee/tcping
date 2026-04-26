@@ -2,14 +2,14 @@ use clap::{Arg, ArgAction, Command, Parser};
 
 /// Command line interface configuration
 #[derive(Parser, Debug, Clone)]
-#[command(name = "tcping", version = "2.7.1", about = "TCP ping utility for measuring network connectivity and latency")]
+#[command(name = "tcping", about = "TCP ping utility for measuring network connectivity and latency")]
 pub struct Cli {
     /// Target hostname or IP address
-    #[arg(required = true)]
+    #[arg(required_unless_present = "show_version")]
     pub host: String,
 
     /// Target port number
-    #[arg(required = true)]
+    #[arg(required_unless_present = "show_version")]
     pub port: u16,
 
     /// Timeout in seconds for each probe
