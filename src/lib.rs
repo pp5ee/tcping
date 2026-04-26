@@ -10,7 +10,8 @@ pub mod stats;
 
 // Re-export main types for easy access
 pub use config::{Config, ProtocolFamily, OutputConfig};
-pub use tcping::{TcpPing, PingResult, Statistics};
+pub use tcping::{TcpPing, PingResult};
+pub use stats::Statistics;
 pub use output::{OutputManager, OutputFormat};
 
 /// Main entry point for programmatic usage
