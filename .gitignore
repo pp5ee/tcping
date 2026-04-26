@@ -31,3 +31,6 @@ releases/
 *.deb
 *.tar.gz
 /release/
+
+# GitHub workflow files (temporary - OAuth scope restriction prevents pushing)
+.github/workflows/release.yml
