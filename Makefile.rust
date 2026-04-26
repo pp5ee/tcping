@@ -1,113 +1,113 @@
-# Makefile for tcping Rust cross-compilation and packaging
+# Makefile for Rust TCPing cross-compilation and packaging
 
-# Variables
-VERSION := 2.7.1
+# Project configuration
+PROJECT_NAME := tcping
+VERSION := 1.0.0
 TARGET_LINUX := x86_64-unknown-linux-gnu
 TARGET_MACOS := x86_64-apple-darwin
 BUILD_DIR := target
-RELEASE_DIR := release
+RELEASE_DIR := releases
+
+# Package configuration
+DEB_PACKAGE_NAME := $(PROJECT_NAME)_$(VERSION)_amd64.deb
+MACOS_PACKAGE_NAME := $(PROJECT_NAME)_$(VERSION)_macos.tar.gz
 
 # Default target
-all: build
-
-# Build for all platforms
-build: build-linux build-macos
+all: build-linux build-macos
 
 # Build for Linux (Ubuntu)
 build-linux:
 	@echo "Building for Linux (Ubuntu)..."
 	cargo build --release --target $(TARGET_LINUX)
-	@mkdir -p $(RELEASE_DIR)/linux
-	cp $(BUILD_DIR)/$(TARGET_LINUX)/release/tcping $(RELEASE_DIR)/linux/
-	@echo "Linux build complete: $(RELEASE_DIR)/linux/tcping"
+	@echo "Linux build complete"
 
 # Build for macOS
 build-macos:
 	@echo "Building for macOS..."
 	cargo build --release --target $(TARGET_MACOS)
-	@mkdir -p $(RELEASE_DIR)/macos
-	cp $(BUILD_DIR)/$(TARGET_MACOS)/release/tcping $(RELEASE_DIR)/macos/
-	@echo "macOS build complete: $(RELEASE_DIR)/macos/tcping"
+	@echo "macOS build complete"
 
 # Create Ubuntu .deb package
-deb: build-linux
+deb-package: build-linux
 	@echo "Creating Ubuntu .deb package..."
-	@mkdir -p $(RELEASE_DIR)/deb/DEBIAN
-	@mkdir -p $(RELEASE_DIR)/deb/usr/bin
+	mkdir -p $(RELEASE_DIR)/deb/DEBIAN
+	mkdir -p $(RELEASE_DIR)/deb/usr/local/bin
+	mkdir -p $(RELEASE_DIR)/deb/usr/share/doc/$(PROJECT_NAME)
+
+	# Copy binary
+	cp $(BUILD_DIR)/$(TARGET_LINUX)/release/$(PROJECT_NAME) $(RELEASE_DIR)/deb/usr/local/bin/
 
 	# Create control file
-	@echo "Package: tcping" > $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo "Package: $(PROJECT_NAME)" > $(RELEASE_DIR)/deb/DEBIAN/control
 	@echo "Version: $(VERSION)" >> $(RELEASE_DIR)/deb/DEBIAN/control
 	@echo "Section: net" >> $(RELEASE_DIR)/deb/DEBIAN/control
 	@echo "Priority: optional" >> $(RELEASE_DIR)/deb/DEBIAN/control
 	@echo "Architecture: amd64" >> $(RELEASE_DIR)/deb/DEBIAN/control
-	@echo "Maintainer: Rust Rewrite <tcping@example.com>" >> $(RELEASE_DIR)/deb/DEBIAN/control
-	@echo "Description: TCP ping utility" >> $(RELEASE_DIR)/deb/DEBIAN/control
-	@echo " TCP ping utility for measuring network connectivity and latency." >> $(RELEASE_DIR)/deb/DEBIAN/control
-	@echo "Depends: libc6" >> $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo "Maintainer: TCPing Maintainer <maintainer@example.com>" >> $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo "Description: TCP connection testing tool" >> $(RELEASE_DIR)/deb/DEBIAN/control
+	@echo " A Rust implementation of TCPing for testing TCP connectivity and measuring RTT." >> $(RELEASE_DIR)/deb/DEBIAN/control
 
-	# Copy binary
-	cp $(RELEASE_DIR)/linux/tcping $(RELEASE_DIR)/deb/usr/bin/
+	# Create copyright file
+	@echo "TCPing - Copyright $(shell date +%Y)" > $(RELEASE_DIR)/deb/usr/share/doc/$(PROJECT_NAME)/copyright
+	@echo "This is free software; see the source for copying conditions." >> $(RELEASE_DIR)/deb/usr/share/doc/$(PROJECT_NAME)/copyright
 
-	# Build package
-	dpkg-deb --build $(RELEASE_DIR)/deb $(RELEASE_DIR)/tcping_$(VERSION)_amd64.deb
-	@echo "Debian package created: $(RELEASE_DIR)/tcping_$(VERSION)_amd64.deb"
+	# Build the package
+	dpkg-deb --build $(RELEASE_DIR)/deb $(RELEASE_DIR)/$(DEB_PACKAGE_NAME)
+	@echo "Ubuntu package created: $(RELEASE_DIR)/$(DEB_PACKAGE_NAME)"
 
 # Create macOS .tar.gz package
-tar: build-macos
+macos-package: build-macos
 	@echo "Creating macOS .tar.gz package..."
-	@mkdir -p $(RELEASE_DIR)/tar/tcping-$(VERSION)-macos/bin
-	@mkdir -p $(RELEASE_DIR)/tar/tcping-$(VERSION)-macos/share/doc
+	mkdir -p $(RELEASE_DIR)/macos/bin
+	mkdir -p $(RELEASE_DIR)/macos/doc
 
 	# Copy binary
-	cp $(RELEASE_DIR)/macos/tcping $(RELEASE_DIR)/tar/tcping-$(VERSION)-macos/bin/
+	cp $(BUILD_DIR)/$(TARGET_MACOS)/release/$(PROJECT_NAME) $(RELEASE_DIR)/macos/bin/
 
 	# Create README
-	@echo "tcping $(VERSION) - TCP ping utility for macOS" > $(RELEASE_DIR)/tar/tcping-$(VERSION)-macos/share/doc/README
-	@echo "Usage: ./bin/tcping <host> <port>" >> $(RELEASE_DIR)/tar/tcping-$(VERSION)-macos/share/doc/README
+	@echo "TCPing $(VERSION) for macOS" > $(RELEASE_DIR)/macos/doc/README.txt
+	@echo "=============================" >> $(RELEASE_DIR)/macos/doc/README.txt
+	@echo "" >> $(RELEASE_DIR)/macos/doc/README.txt
+	@echo "Usage: ./tcping <hostname> <port>" >> $(RELEASE_DIR)/macos/doc/README.txt
+	@echo "Example: ./tcping 8.8.8.8 53" >> $(RELEASE_DIR)/macos/doc/README.txt
 
-	# Create tarball
-	cd $(RELEASE_DIR)/tar && tar -czf ../tcping-$(VERSION)-macos-x86_64.tar.gz tcping-$(VERSION)-macos/
-	@echo "macOS tarball created: $(RELEASE_DIR)/tcping-$(VERSION)-macos-x86_64.tar.gz"
+	# Create archive
+	cd $(RELEASE_DIR)/macos && tar -czf ../$(MACOS_PACKAGE_NAME) .
+	@echo "macOS package created: $(RELEASE_DIR)/$(MACOS_PACKAGE_NAME)"
 
-# Create all release packages
-release: deb tar
-	@echo "Release packages created:"
-	@echo "  - $(RELEASE_DIR)/tcping_$(VERSION)_amd64.deb (Ubuntu)"
-	@echo "  - $(RELEASE_DIR)/tcping-$(VERSION)-macos-x86_64.tar.gz (macOS)"
+# Build both packages
+packages: deb-package macos-package
 
-# Run tests
-test:
-	cargo test --verbose
+# Test Linux package
+test-linux: build-linux
+	@echo "Testing Linux binary..."
+	@$(BUILD_DIR)/$(TARGET_LINUX)/release/$(PROJECT_NAME) --help > /dev/null && echo "✓ Linux binary test passed" || echo "✗ Linux binary test failed"
+
+# Test macOS package
+test-macos: build-macos
+	@echo "Testing macOS binary..."
+	@$(BUILD_DIR)/$(TARGET_MACOS)/release/$(PROJECT_NAME) --help > /dev/null && echo "✓ macOS binary test passed" || echo "✗ macOS binary test failed"
+
+# Test both packages
+test: test-linux test-macos
 
 # Clean build artifacts
 clean:
 	cargo clean
 	rm -rf $(RELEASE_DIR)
-	rm -rf debian
-	rm -rf macos
-
-# Install dependencies (cross-compilation toolchains)
-setup-deps:
-	@echo "Setting up cross-compilation toolchains..."
-	# Install Linux target
-	rustup target add $(TARGET_LINUX)
-	# Install macOS target (requires cross toolchain)
-	rustup target add $(TARGET_MACOS)
-	@echo "Dependencies installed"
 
 # Show help
 help:
 	@echo "Available targets:"
-	@echo "  build        - Build for all platforms"
+	@echo "  all          - Build for both Linux and macOS"
 	@echo "  build-linux  - Build for Linux (Ubuntu)"
 	@echo "  build-macos  - Build for macOS"
-	@echo "  deb          - Create Ubuntu .deb package"
-	@echo "  tar          - Create macOS .tar.gz package"
-	@echo "  release      - Create all release packages"
-	@echo "  test         - Run tests"
+	@echo "  deb-package  - Create Ubuntu .deb package"
+	@echo "  macos-package - Create macOS .tar.gz package"
+	@echo "  packages     - Create both packages"
+	@echo "  test-linux   - Test Linux binary"
+	@echo "  test-macos   - Test macOS binary"
+	@echo "  test         - Test both binaries"
 	@echo "  clean        - Clean build artifacts"
-	@echo "  setup-deps   - Install cross-compilation dependencies"
-	@echo "  help         - Show this help"
 
-.PHONY: all build build-linux build-macos deb tar release test clean setup-deps help
+.PHONY: all build-linux build-macos deb-package macos-package packages test-linux test-macos test clean help

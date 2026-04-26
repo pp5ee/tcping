@@ -23,3 +23,5 @@ test_output.csv
 # Build artifacts
 tcping_*_amd64/
 tcping_*_aarch64/
+releases/
+*.deb

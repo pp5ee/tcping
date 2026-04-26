@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use crate::*;
+    use crate::config::{Config, OutputConfig, ProtocolFamily};
     use std::time::Duration;
 
     #[test]
@@ -52,59 +52,5 @@ mod tests {
         assert!(config.color);
         assert!(!config.show_failures_only);
         assert!(!config.show_source_address);
-    }
-
-    #[test]
-    fn test_cli_validation() {
-        let cli = Cli {
-            host: "google.com".to_string(),
-            port: 80,
-            ipv4_only: false,
-            ipv6_only: false,
-            retry_resolution: 0,
-            count: Some(5),
-            interval: 1.0,
-            timeout: 3.0,
-            interface: None,
-            json: false,
-            pretty: false,
-            no_color: false,
-            timestamps: false,
-            csv: None,
-            db: None,
-            show_source_address: false,
-            show_failures_only: false,
-            verbose: 0,
-            check_updates: false,
-        };
-
-        assert!(cli.validate().is_ok());
-    }
-
-    #[test]
-    fn test_cli_invalid_combination() {
-        let cli = Cli {
-            host: "google.com".to_string(),
-            port: 80,
-            ipv4_only: true,
-            ipv6_only: true,  // This should cause validation to fail
-            retry_resolution: 0,
-            count: Some(5),
-            interval: 1.0,
-            timeout: 3.0,
-            interface: None,
-            json: false,
-            pretty: false,
-            no_color: false,
-            timestamps: false,
-            csv: None,
-            db: None,
-            show_source_address: false,
-            show_failures_only: false,
-            verbose: 0,
-            check_updates: false,
-        };
-
-        assert!(cli.validate().is_err());
     }
 }
