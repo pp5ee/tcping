@@ -321,54 +321,6 @@ pub fn generate_timestamp() -> String {
     chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f").to_string()
 }
 
-// Add Statistics struct that tests expect
-#[derive(Debug, Default)]
-pub struct Statistics {
-    pub total: u32,
-    pub successful: u32,
-    pub failed: u32,
-    pub min_rtt: Duration,
-    pub max_rtt: Duration,
-    pub total_rtt: Duration,
-}
-
-impl Statistics {
-    pub fn new() -> Self {
-        Self {
-            min_rtt: Duration::from_secs(u64::MAX),
-            max_rtt: Duration::from_secs(0),
-            ..Default::default()
-        }
-    }
-
-    pub fn add_result(&mut self, result: &PingResult) {
-        self.total += 1;
-
-        if result.success {
-            self.successful += 1;
-
-            if result.rtt < self.min_rtt {
-                self.min_rtt = result.rtt;
-            }
-
-            if result.rtt > self.max_rtt {
-                self.max_rtt = result.rtt;
-            }
-
-            self.total_rtt += result.rtt;
-        } else {
-            self.failed += 1;
-        }
-    }
-
-    pub fn average_rtt(&self) -> Duration {
-        if self.successful > 0 {
-            self.total_rtt / self.successful
-        } else {
-            Duration::from_secs(0)
-        }
-    }
-}
 use crate::output::OutputManager;
 use tokio::signal;
 use tokio::time::interval;
