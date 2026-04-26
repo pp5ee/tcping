@@ -45,7 +45,7 @@ pub struct Cli {
     pub timestamps: bool,
 
     /// Output in JSON format
-    #[arg(long = "json")]
+    #[arg(short = 'j', long = "json")]
     pub json: bool,
 
     /// Pretty JSON formatting
@@ -69,11 +69,11 @@ pub struct Cli {
     pub show_failures_only: bool,
 
     /// Retry hostname resolution after N failed probes
-    #[arg(long = "retry-resolution", default_value = "0")]
+    #[arg(short = 'r', long = "retry-resolution", default_value = "0")]
     pub retry_resolution: u32,
 
     /// Verbosity level (0-3)
-    #[arg(short = 'v', long = "verbose", action = ArgAction::Count)]
+    #[arg(short = 'l', long = "verbose", action = ArgAction::Count)]
     pub verbose: u8,
 
     /// Check for updates
