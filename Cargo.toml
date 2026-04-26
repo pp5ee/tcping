@@ -8,14 +8,6 @@ license = "MIT OR Apache-2.0"
 readme = "README.md"
 repository = ""
 
-# Cross-compilation targets (commented out for now - to be implemented later)
-# [package.metadata.cross]
-# # Ubuntu/Linux target
-# linux-x86_64 = { image = "ubuntu:22.04", target = "x86_64-unknown-linux-gnu" }
-#
-# # macOS target
-# macos-x86_64 = { image = "macos-cross:latest", target = "x86_64-apple-darwin" }
-
 [package.metadata.deb]
 maintainer = "Rust Rewrite"
 section = "net"

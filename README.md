@@ -8,17 +8,17 @@ A complete Rust rewrite of the TCPing tool with 100% CLI compatibility to the or
 - **Comprehensive Statistics** - Uptime/downtime tracking, RTT min/avg/max, hostname change tracking
 - **Multiple Output Formats** - Human-readable, JSON, CSV, and SQLite database output
 - **Real-time Features** - Press Enter for real-time statistics, Ctrl+C for graceful shutdown
-- **Cross-Platform Support** - Built with cross-compilation for Ubuntu Linux
+- **Ubuntu Deployment** - Optimized for Ubuntu Linux with cross-compilation targeting x86_64-unknown-linux-gnu
 - **Advanced Networking** - IPv4/IPv6 support, interface binding, hostname resolution retry
 
 ## Installation
 
 ### Ubuntu Package Installation
 
-Download the latest release from GitHub and install:
+Download the latest Ubuntu release from GitHub and install:
 
 ```bash
-# Download and extract the package
+# Download and extract the Ubuntu package
 wget https://github.com/[username]/tcping/releases/latest/download/tcping_2.7.1_x86_64.tar.gz
 tar -xzf tcping_2.7.1_x86_64.tar.gz
 
