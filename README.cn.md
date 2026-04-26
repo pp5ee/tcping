@@ -2,23 +2,26 @@
  <img alt="tcping" src="Artwork/tcping_logo3.jpeg" style="width:70%;">
 </div>
 
-# TCPING
+# TCPING - Rust 实现
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/pouriyajamshidi/tcping)](https://goreportcard.com/report/github.com/pouriyajamshidi/tcping)
-[![CodeFactor](https://www.codefactor.io/repository/github/pouriyajamshidi/tcping/badge)](https://www.codefactor.io/repository/github/pouriyajamshidi/tcping)
-[![Go](https://github.com/pouriyajamshidi/tcping/actions/workflows/.github/workflows/codeql-analysis.yml/badge.svg)](https://github.com/pouriyajamshidi/tcping/actions/workflows/go.yml)
-[![Docker container build](https://github.com/pouriyajamshidi/tcping/actions/workflows/container-publish.yml/badge.svg)](https://github.com/pouriyajamshidi/tcping/actions/workflows/container-publish.yml)
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/pouriyajamshidi/tcping)
-[![Go project version](https://badge.fury.io/go/github.com%2Fpouriyajamshidi%2Ftcping.svg)](https://badge.fury.io/go/github.com%2Fpouriyajamshidi%2Ftcping)
-![Download](https://img.shields.io/github/downloads/pouriyajamshidi/tcping/total.svg?label=DOWNLOADS&logo=github)
-![Docker Pulls](https://img.shields.io/docker/pulls/pouriyajamshidi/tcping)
+[![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/pp5ee/tcping)](https://github.com/pp5ee/tcping/releases)
+[![Ubuntu Package](https://img.shields.io/badge/platform-Ubuntu%20Linux-green.svg)](https://github.com/pp5ee/tcping/releases)
+![GitHub downloads](https://img.shields.io/github/downloads/pp5ee/tcping/total.svg?label=DOWNLOADS&logo=github)
 
-这是一个跨平台的 `TCP` 端口 ping 程序，灵感来自 Linux 的 ping 工具。此程序将向您指定的 `IP 地址` 或 `主机名` 发送 `TCP` 探测，并打印结果。它支持 `IPv4` 和 `IPv6`。
+这是一个用 Rust 重写的 `TCP` 端口 ping 程序，与原始 Go 版本具有 100% CLI 兼容性。此程序将向您指定的 `IP 地址` 或 `主机名` 发送 `TCP` 探测，并打印结果。它支持 `IPv4` 和 `IPv6`，专为 Ubuntu Linux 优化部署。
 
 **TCPING** 对 _成功_ 和 _不成功_ 的探测使用不同的 `TCP 序列号`，因此当您查看结果并发现探测失败时，可以很容易地推断出到该点为止的总丢包数。
 
-以下是 **TCPING** 的一些功能：
+以下是 **TCPING Rust 实现** 的一些功能：
 
+- **100% CLI 兼容** - 与原始 Go 版本完全相同的命令行界面
+- **全面统计** - 正常运行时间/停机时间跟踪，RTT 最小/平均/最大值，主机名变更跟踪
+- **多种输出格式** - 人类可读、JSON、CSV 和 SQLite 数据库输出
+- **实时功能** - 按 Enter 键获取实时统计信息，Ctrl+C 优雅关闭
+- **Ubuntu 部署** - 专为 Ubuntu Linux 优化，交叉编译目标为 x86_64-unknown-linux-gnu
+- **高级网络功能** - IPv4/IPv6 支持，接口绑定，主机名解析重试
 - 在 `ICMP` 被阻止的环境中替代 `ping`。
 - 监控您的网络连接。
 - 确定丢包率。
@@ -81,69 +84,32 @@
 
 ## 下载
 
-- ### [Windows](https://github.com/pouriyajamshidi/tcping/releases/latest/download/tcping_Windows.zip)
-
-- ### [Linux](https://github.com/pouriyajamshidi/tcping/releases/latest/download/tcping_Linux.tar.gz) - 也可通过 `brew` 和 [.deb 软件包](#linux---debian-和-ubuntu) 获得
-
-- ### [macOS](https://github.com/pouriyajamshidi/tcping/releases/latest/download/tcping_MacOS.tar.gz) - 也可通过 `brew` 获得
-
-- ### [macOS M1 - ARM](https://github.com/pouriyajamshidi/tcping/releases/latest/download/tcping_MacOS_ARM.tar.gz) - 也可通过 `brew` 获得
-
-- ### [FreeBSD](https://github.com/pouriyajamshidi/tcping/releases/latest/download/tcping_FreeBSD.tar.gz)
+- ### [Ubuntu 软件包](https://github.com/pp5ee/tcping/releases/latest/download/tcping_*.tar.gz) - 专为 Ubuntu Linux 优化的 tar 包
 
 下载完成后，请转到[用法](#用法)部分。
 
 **或者**，您可以：
 
-- 使用 `Docker` 镜像：
+- **从源代码构建**：
 
   ```bash
-  docker pull pouriyajamshidi/tcping:latest
+  # 安装 Rust 工具链
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+  # 克隆并构建
+  git clone https://github.com/pp5ee/tcping.git
+  cd tcping
+  cargo build --release
+
+  # 创建 Ubuntu 软件包
+  ./build-ubuntu-tar.sh
   ```
 
-  > 镜像也可以在 GitHub 容器注册表中找到：
+- 使用 `cargo install` 安装：
 
   ```bash
-  docker pull ghcr.io/pouriyajamshidi/tcping:latest
+  cargo install --git https://github.com/pp5ee/tcping.git
   ```
-
-- 使用 `go install` 安装：
-
-  Go 版本最低要求为 `1.24.10`
-
-  ```bash
-  go install github.com/pouriyajamshidi/tcping/v2@latest
-  ```
-
-- 使用 `brew` 安装：
-
-  ```bash
-  brew install pouriyajamshidi/tap/tcping
-  ```
-
-- [x tcping](https://x-cmd.com/pkg/tcping)
-  
-   在 x-cmd 中，无需安装即可**直接使用 tcping 命令**：
-
-   ```bash
-   x tcping bing.com 80
-   ```
-
-   或者，你也可以选择将 tcping 安装到用户空间，不需 root 特权，亦不影响全局依赖：
-
-   ```bash
-   x env use tcping
-   tcping bing.com 80
-   ```
-
-
-- 或者通过在 `tcping` 目录中运行 `make` 命令来自行编译代码：
-
-  ```bash
-  make build
-  ```
-
-  这将在 `executables` 文件夹中为您提供一个压缩文件，其中包含所有受支持操作系统的可执行文件。
 
 ---
 
@@ -190,36 +156,18 @@ sudo apt install -y /tmp/tcping.deb
 
 如果您使用的是其他 Linux 发行版，请继续阅读[本节](#linux-bsd-和-mac-os)。
 
-### Linux、BSD 和 mac OS
+### Ubuntu 安装
 
-解压缩文件：
-
-```bash
-tar -xvf tcping_Linux.tar.gz
-#
-# 或在 Mac OS 上
-#
-tar -xvf tcping_MacOS.tar.gz
-#
-# 在 Mac OS ARM 上
-#
-tar -xvf tcping_MacOS_ARM.tar.gz
-#
-# 在 BSD 上
-#
-tar -xvf tcping_FreeBSD.tar.gz
-```
-
-设置文件为可执行：
+下载并解压缩 Ubuntu 软件包：
 
 ```bash
-chmod +x tcping
-```
+# 下载并解压缩 Ubuntu 软件包
+wget https://github.com/[username]/tcping/releases/latest/download/tcping_2.7.1_x86_64.tar.gz
+tar -xzf tcping_2.7.1_x86_64.tar.gz
 
-将可执行文件复制到您的系统 `PATH` 中，例如 `/usr/local/bin/`：
-
-```bash
-sudo cp tcping /usr/local/bin/
+# 系统级安装
+cd tcping_2.7.1_x86_64
+sudo ./install.sh
 ```
 
 运行：
@@ -240,38 +188,13 @@ tcping 192.168.1.1:80
 tcping '[2001:db8::1]:443'
 ```
 
-### Windows
+## 发布自动化
 
-我们建议使用 [Windows 终端](https://apps.microsoft.com/store/detail/windows-terminal/9N0DX20HK701) 以获得最佳体验和正确的颜色显示。
-
-将 `tcping.exe` 复制到您的系统 [PATH](https://www.howtogeek.com/118594/how-to-edit-your-system-path-for-easy-command-line-access/) 中，例如 `C:\Windows\System32`，然后像这样运行它：
-
-```powershell
-tcping www.example.com 443
-# 或使用 主机:端口 格式
-tcping www.example.com:443
-# 或提供 -r 标志以
-# 在一定次数的失败后启用名称解析重试：
-tcping www.example.com 443 -r 10
-```
-
-> TCPING 可能会被 Windows Defender 或某些反恶意软件错误地标记。这在 Go 程序中很常见。请查看 Go 的官方文档 [此处](https://go.dev/doc/faq#virus)。
-
-### Docker
-
-Docker 镜像可以像这样使用：
-
-```bash
-# 使用 Docker Hub
-docker run -it pouriyajamshidi/tcping:latest example.com 443
-# 或使用 主机:端口 格式
-docker run -it pouriyajamshidi/tcping:latest example.com:443
-
-# 使用 GitHub 容器注册表：
-docker run -it ghcr.io/pouriyajamshidi/tcping:latest example.com 443
-# 或使用 主机:端口 格式
-docker run -it ghcr.io/pouriyajamshidi/tcping:latest example.com:443
-```
+此项目包含 GitHub Actions 自动化功能：
+- 标签发布时自动构建 Ubuntu 软件包
+- 针对 x86_64-unknown-linux-gnu 目标的交叉编译
+- 包含验证的 tar 包创建
+- GitHub 发布资源上传
 
 ---
 
