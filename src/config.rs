@@ -77,6 +77,9 @@ pub struct OutputConfig {
 impl Config {
     /// Create configuration from CLI arguments
     pub fn from_cli(cli: &Cli) -> Result<Self, String> {
+        // Parse target to extract host and port
+        let (hostname, port) = cli.parse_target()?;
+
         // Validate CLI arguments
         cli.validate()?;
 
@@ -102,8 +105,8 @@ impl Config {
         };
 
         Ok(Config {
-            hostname: cli.host.clone(),
-            port: cli.port,
+            hostname,
+            port,
             protocol_family,
             retry_resolution: cli.retry_resolution,
             max_probes: cli.count,

@@ -324,7 +324,7 @@ pub fn generate_timestamp() -> String {
 use crate::output::OutputManager;
 use tokio::signal;
 use tokio::time::interval;
-use std::io::{self, BufRead};
+use std::io;
 
 impl TcpPing {
     pub async fn run(&mut self) -> Result<(), Box<dyn std::error::Error>> {

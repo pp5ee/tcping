@@ -1,7 +1,7 @@
 use crate::config::OutputConfig;
 use crate::tcping::{PingResult, TcpPingStats};
 use colored::*;
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use std::time::Duration;
 
 /// Output format options
