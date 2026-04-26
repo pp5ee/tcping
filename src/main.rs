@@ -2,7 +2,7 @@ use clap::Parser;
 use std::process;
 use tcping::cli::Cli;
 use tcping::config::Config;
-use tcping::TCPing;
+use tcping::TcpPing;
 
 #[tokio::main]
 async fn main() {
@@ -19,7 +19,7 @@ async fn main() {
     };
 
     // Create and run TCPing
-    let mut tcping = TCPing::new(config);
+    let mut tcping = TcpPing::new(config);
 
     if let Err(err) = tcping.run().await {
         eprintln!("Error: {}", err);

@@ -22,40 +22,43 @@ section = "net"
 priority = "optional"
 depends = "libc6"
 assets = [
-    ["target/x86_64-unknown-linux-gnu/release/tcping", "/usr/bin/tcping", "755"],
+    ["target/release/tcping", "/usr/bin/tcping", "755"],
 ]
 
 [dependencies]
 # Core dependencies for networking and async
-tokio = { version = "1.0", features = ["full"] }
+tokio = { version = "1.52", features = ["full"] }
 
 # Command-line argument parsing
-clap = { version = "4.0", features = ["derive", "cargo"] }
+clap = { version = "4.6", features = ["derive"] }
 
 # DNS resolution and networking
-dns-lookup = "2.0"
+dns-lookup = "2.1"
 
 # Terminal output and formatting
-colored = "2.0"
+colored = "2.2"
 
 # JSON output support
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 # CSV output support
-csv = "1.0"
-
-# SQLite database support (for -db flag)
-rusqlite = { version = "0.30", features = ["bundled"] }
+csv = "1.4"
 
 # Cross-platform signal handling
-ctrlc = "3.0"
+ctrlc = "3.5"
 
 # Time and duration handling
 chrono = { version = "0.4", features = ["serde"] }
 
 # Random number generation (for IP selection)
 rand = "0.8"
+
+# ZeroMQ support (for statistics output)
+zmq = "0.10"
+
+# Terminal detection
+atty = "0.2"
 
 [dev-dependencies]
 # Testing dependencies

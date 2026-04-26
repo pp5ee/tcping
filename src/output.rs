@@ -1,7 +1,6 @@
 use crate::config::OutputConfig;
-use crate::tcping::{ProbeResult, Statistics};
+use crate::tcping::{PingResult, Statistics};
 use colored::*;
-// Removed unused imports to fix compilation warnings
 
 /// Output format options
 #[derive(Debug, Clone, PartialEq)]
@@ -45,7 +44,7 @@ impl OutputManager {
     }
 
     /// Output a single probe result
-    pub fn output_probe(&self, result: &ProbeResult) {
+    pub fn output_probe(&self, result: &PingResult) {
         match self.format {
             OutputFormat::Human => self.output_probe_human(result),
             OutputFormat::Json => self.output_probe_json(result),
@@ -64,37 +63,31 @@ impl OutputManager {
         }
     }
 
-    fn output_probe_human(&self, result: &ProbeResult) {
+    fn output_probe_human(&self, result: &PingResult) {
         if result.success {
             println!(
-                "{} bytes from {}: {} time={:.2} ms",
-                64, // Standard ICMP-like packet size for compatibility
-                result.target_addr,
-                "seq=1".bright_black(), // Placeholder sequence number
-                result.rtt.unwrap_or(0.0)
+                "time={:.2} ms",
+                result.rtt.as_secs_f64() * 1000.0
             );
         } else {
             println!(
-                "{}: {}",
-                result.target_addr.to_string().red(),
+                "{}",
                 result.error.as_ref().unwrap_or(&"unknown error".to_string()).red()
             );
         }
     }
 
-    fn output_probe_json(&self, result: &ProbeResult) {
+    fn output_probe_json(&self, result: &PingResult) {
         let json_output = serde_json::json!({
             "timestamp": chrono::Utc::now().to_rfc3339(),
             "success": result.success,
-            "target": result.target_addr.to_string(),
             "rtt_ms": result.rtt,
             "error": result.error,
-            "source_addr": result.source_addr.map(|addr| addr.to_string())
         });
         println!("{}", json_output);
     }
 
-    fn output_probe_minimal(&self, result: &ProbeResult) {
+    fn output_probe_minimal(&self, result: &PingResult) {
         if result.success {
             println!("OK");
         } else {
@@ -102,51 +95,49 @@ impl OutputManager {
         }
     }
 
-    fn output_probe_csv(&self, result: &ProbeResult) {
+    fn output_probe_csv(&self, result: &PingResult) {
         let timestamp = chrono::Utc::now().to_rfc3339();
         let success = if result.success { "true" } else { "false" };
-        let rtt = result.rtt.unwrap_or(0.0);
+        let rtt = result.rtt.as_secs_f64();
         let default_error = String::new();
         let error = result.error.as_ref().unwrap_or(&default_error);
-
-        println!("{},{},{},{:.2},{}", timestamp, success, result.target_addr, rtt, error);
+        
+        println!("{},{},{:.2},{}", timestamp, success, rtt, error);
     }
 
     fn output_stats_human(&self, stats: &Statistics) {
         println!("\n--- TCP Ping Statistics ---");
         println!("{} packets transmitted, {} received, {:.1}% packet loss",
-            stats.total_probes.to_string().bold(),
-            stats.successful_probes.to_string().green().bold(),
-            stats.packet_loss
+            stats.total.to_string().bold(),
+            stats.successful.to_string().green().bold(),
+            (stats.failed as f64 / stats.total as f64) * 100.0
         );
 
-        if let (Some(min), Some(max), Some(avg)) = (stats.min_rtt, stats.max_rtt, stats.avg_rtt) {
+        if stats.total > 0 {
+            let min = stats.min_rtt.as_secs_f64() * 1000.0;
+            let max = stats.max_rtt.as_secs_f64() * 1000.0;
+            let avg = stats.average_rtt().as_secs_f64() * 1000.0;
+            
             println!("rtt min/avg/max = {:.2}/{:.2}/{:.2} ms",
-                min.to_string().green(),
-                avg.to_string().yellow(),
-                max.to_string().red()
+                min,
+                avg,
+                max
             );
         }
-
         // Duration tracking not implemented in current Statistics structure
         println!("Duration: Duration tracking not implemented");
-
-        println!("Longest success streak: {}", stats.longest_success_streak);
-        println!("Longest failure streak: {}", stats.longest_failure_streak);
     }
 
     fn output_stats_json(&self, stats: &Statistics) {
         let json_output = serde_json::json!({
             "statistics": {
-                "total_probes": stats.total_probes,
-                "successful_probes": stats.successful_probes,
-                "failed_probes": stats.failed_probes,
-                "packet_loss_percent": stats.packet_loss,
+                "total_probes": stats.total,
+                "successful_probes": stats.successful,
+                "failed_probes": stats.failed,
+                "packet_loss_percent": (stats.failed as f64 / stats.total as f64) * 100.0,
                 "min_rtt_ms": stats.min_rtt,
                 "max_rtt_ms": stats.max_rtt,
-                "avg_rtt_ms": stats.avg_rtt,
-                "longest_success_streak": stats.longest_success_streak,
-                "longest_failure_streak": stats.longest_failure_streak,
+                "avg_rtt_ms": stats.average_rtt(),
                 "duration_seconds": None::<f64>
             }
         });
@@ -155,24 +146,22 @@ impl OutputManager {
 
     fn output_stats_minimal(&self, stats: &Statistics) {
         println!("Transmitted: {}, Received: {}, Loss: {:.1}%",
-            stats.total_probes, stats.successful_probes, stats.packet_loss);
+            stats.total, stats.successful, (stats.failed as f64 / stats.total as f64) * 100.0);
     }
 
     fn output_stats_csv(&self, stats: &Statistics) {
         let timestamp = chrono::Utc::now().to_rfc3339();
-        let min_rtt = stats.min_rtt.unwrap_or(0.0);
-        let max_rtt = stats.max_rtt.unwrap_or(0.0);
-        let avg_rtt = stats.avg_rtt.unwrap_or(0.0);
-
-        println!("{},{},{},{},{:.1},{:.2},{:.2},{:.2},{},{}",
+        let min_rtt = stats.min_rtt.as_secs_f64() * 1000.0;
+        let max_rtt = stats.max_rtt.as_secs_f64() * 1000.0;
+        let avg_rtt = stats.average_rtt().as_secs_f64() * 1000.0;
+        
+        println!("{},{},{:.1},{:.2},{:.2},{:.2}",
             timestamp,
-            stats.total_probes,
-            stats.successful_probes,
-            stats.failed_probes,
-            stats.packet_loss,
-            min_rtt, avg_rtt, max_rtt,
-            stats.longest_success_streak,
-            stats.longest_failure_streak
+            stats.total,
+            (stats.failed as f64 / stats.total as f64) * 100.0,
+            min_rtt,
+            avg_rtt,
+            max_rtt
         );
     }
 }

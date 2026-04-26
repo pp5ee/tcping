@@ -10,7 +10,7 @@ pub mod stats;
 
 // Re-export main types for easy access
 pub use config::{Config, ProtocolFamily, OutputConfig};
-pub use tcping::{TCPing, ProbeResult, Statistics};
+pub use tcping::{TcpPing, PingResult, Statistics};
 pub use output::{OutputManager, OutputFormat};
 
 /// Main entry point for programmatic usage
@@ -71,8 +71,8 @@ impl TcpPingBuilder {
     }
 
     /// Build the TCP ping instance
-    pub fn build(self) -> TCPing {
-        TCPing::new(self.config)
+    pub fn build(self) -> TcpPing {
+        TcpPing::new(self.config)
     }
 }
 

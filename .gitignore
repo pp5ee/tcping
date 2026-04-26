@@ -25,3 +25,9 @@ tcping_*_amd64/
 tcping_*_aarch64/
 releases/
 *.deb
+
+# Build artifacts from Rust rewrite
+/target/
+*.deb
+*.tar.gz
+/release/
