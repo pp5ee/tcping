@@ -1,0 +1,75 @@
+[package]
+name = "tcping"
+version = "2.7.1"
+edition = "2021"
+description = "Ping TCP ports using tcping. Inspired by Linux's ping utility. Written in Rust"
+authors = ["Rust Rewrite"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = ""
+
+# Cross-compilation targets (commented out for now - to be implemented later)
+# [package.metadata.cross]
+# # Ubuntu/Linux target
+# linux-x86_64 = { image = "ubuntu:22.04", target = "x86_64-unknown-linux-gnu" }
+#
+# # macOS target
+# macos-x86_64 = { image = "macos-cross:latest", target = "x86_64-apple-darwin" }
+
+[package.metadata.deb]
+maintainer = "Rust Rewrite"
+section = "net"
+priority = "optional"
+depends = "libc6"
+assets = [
+    ["target/release/tcping", "/usr/bin/tcping", "755"],
+]
+
+[dependencies]
+# Core dependencies for networking and async
+tokio = { version = "1.52", features = ["full"] }
+
+# Command-line argument parsing
+clap = { version = "4.6", features = ["derive"] }
+
+# DNS resolution and networking
+dns-lookup = "2.1"
+
+# Terminal output and formatting
+colored = "2.2"
+
+# JSON output support
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# CSV output support
+csv = "1.4"
+
+# Cross-platform signal handling
+ctrlc = "3.5"
+
+# Time and duration handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Random number generation (for IP selection)
+rand = "0.8"
+
+# ZeroMQ support (for statistics output)
+zmq = "0.10"
+
+# Terminal detection
+atty = "0.2"
+
+[dev-dependencies]
+# Testing dependencies
+assert_cmd = "2.0"
+predicates = "2.0"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[[bin]]
+name = "tcping"
+path = "src/main.rs"
