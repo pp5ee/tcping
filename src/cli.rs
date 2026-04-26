@@ -75,6 +75,10 @@ pub struct Cli {
     /// Verbosity level (0-3)
     #[arg(short = 'v', long = "verbose", action = ArgAction::Count)]
     pub verbose: u8,
+
+    /// Check for updates
+    #[arg(short = 'u', long = "check-updates")]
+    pub check_updates: bool,
 }
 
 impl Cli {
