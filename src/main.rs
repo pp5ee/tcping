@@ -7,17 +7,16 @@ use tcping::TcpPing;
 
 #[tokio::main]
 async fn main() {
-    // Check for version flag manually before parsing CLI
-    let args: Vec<String> = env::args().collect();
-    if args.iter().any(|arg| arg == "-v" || arg == "--version") {
-        println!("tcping 2.7.1");
-        return;
-    }
-
     // Parse command line arguments with host:port support
+    let args: Vec<String> = env::args().collect();
     let cli = match parse_cli_with_host_port(&args) {
         Ok(cli) => cli,
         Err(err) => {
+            // If it's a help or version error, let clap handle it
+            if args.iter().any(|arg| arg == "-h" || arg == "--help" || arg == "-v" || arg == "--version") {
+                let _ = Cli::try_parse_from(args); // This will show the help/version and exit
+                return;
+            }
             eprintln!("Error: {}", err);
             process::exit(1);
         }
@@ -60,9 +59,10 @@ fn parse_cli_with_host_port(args: &[String]) -> Result<Cli, String> {
         }
 
         // Handle IPv6 addresses with brackets [::1]:8080
-        if last_arg.starts_with('[') && last_arg.contains("]:") {
+        if last_arg.starts_with('[') {
             if let Some(bracket_end) = last_arg.find(']') {
-                if last_arg.len() > bracket_end + 1 && &last_arg[bracket_end..bracket_end+2] == "]:" {
+                // Check if we have "]:" followed by port number
+                if bracket_end + 2 < last_arg.len() && &last_arg[bracket_end..=bracket_end+1] == "]:" {
                     let host = &last_arg[1..bracket_end];
                     let port = &last_arg[bracket_end+2..];
                     processed_args.pop(); // Remove the combined argument

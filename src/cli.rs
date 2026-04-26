@@ -2,7 +2,7 @@ use clap::{ArgAction, Parser};
 
 /// Command line interface configuration
 #[derive(Parser, Debug, Clone)]
-#[command(name = "tcping", about = "TCP ping utility for measuring network connectivity and latency")]
+#[command(name = "tcping", about = "TCP ping utility for measuring network connectivity and latency", version = "2.7.1")]
 pub struct Cli {
     /// Target hostname or IP address (or host:port format)
     #[arg(required = true)]
@@ -13,7 +13,7 @@ pub struct Cli {
     pub port: Option<u16>,
 
     /// Timeout in seconds for each probe
-    #[arg(short = 't', long = "timeout", default_value = "5")]
+    #[arg(short = 't', long = "timeout", default_value = "1")]
     pub timeout: f64,
 
     /// Interval in seconds between probes
@@ -73,7 +73,7 @@ pub struct Cli {
     pub retry_resolution: u32,
 
     /// Verbosity level (0-3)
-    #[arg(short = 'l', long = "verbose", action = ArgAction::Count)]
+    #[arg(long = "verbose", action = ArgAction::Count)]
     pub verbose: u8,
 
     /// Check for updates
@@ -130,11 +130,13 @@ impl Cli {
         }
 
         // Handle IPv6 addresses with brackets [::1]:8080
-        if self.target.starts_with('[') && self.target.contains("]:") {
+        if self.target.starts_with('[') {
             if let Some(bracket_end) = self.target.find(']') {
-                if self.target.len() > bracket_end + 1 && &self.target[bracket_end..bracket_end+2] == "]:" {
+                // Check if we have "]:" followed by port number
+                if bracket_end + 2 < self.target.len() && &self.target[bracket_end..=bracket_end+1] == "]:" {
                     let host = &self.target[1..bracket_end];
-                    let port = self.target[bracket_end+2..].parse::<u16>().map_err(|e| format!("Invalid port number: {}", e))?;
+                    let port_str = &self.target[bracket_end+2..];
+                    let port = port_str.parse::<u16>().map_err(|e| format!("Invalid port number: {}", e))?;
                     return Ok((host.to_string(), port));
                 }
             }
