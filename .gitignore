@@ -19,6 +19,7 @@ build.rs
 VALIDATION_REPORT.md
 rlcr-summary.md
 round-1-summary.md
+round2_summary.md
 docs/round-*.md
 test_output.csv
 # Build artifacts
